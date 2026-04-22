@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="it" data-theme="light">
 <head>
@@ -537,7 +538,10 @@ function initTxtSlider(){
 // ── DRAW MODE ────────────────────────────────────────────
 drawModeBtn.addEventListener('click',()=>{
   state.drawMode=!state.drawMode;
-  if(state.drawMode){state.textMode=false;textModeBtn.classList.remove('on');deactivateNote();}
+  if(state.drawMode){
+    state.textMode=false;textModeBtn.classList.remove('on');deactivateNote();
+    state.noteMode=false;noteModeBtn.classList.remove('on');noteToolbar.classList.remove('visible');
+  }
   drawModeBtn.classList.toggle('on',state.drawMode);
   syncDraw();save();
 });
@@ -588,6 +592,10 @@ function renderNoteToolbar(){
 }
 noteModeBtn.addEventListener('click',()=>{
   state.noteMode=!state.noteMode;
+  if(state.noteMode){
+    state.drawMode=false;drawModeBtn.classList.remove('on');syncDraw();
+    state.textMode=false;textModeBtn.classList.remove('on');deactivateNote();
+  }
   noteModeBtn.classList.toggle('on',state.noteMode);
   noteToolbar.classList.toggle('visible',state.noteMode);
   if(state.noteMode)renderNoteToolbar();
@@ -609,7 +617,10 @@ addNoteBtn.addEventListener('click',e=>{
 // ── TEXT MODE ────────────────────────────────────────────
 textModeBtn.addEventListener('click',()=>{
   state.textMode=!state.textMode;
-  if(state.textMode){state.drawMode=false;drawModeBtn.classList.remove('on');syncDraw();}
+  if(state.textMode){
+    state.drawMode=false;drawModeBtn.classList.remove('on');syncDraw();
+    state.noteMode=false;noteModeBtn.classList.remove('on');noteToolbar.classList.remove('visible');
+  }
   else deactivateNote();
   textModeBtn.classList.toggle('on',state.textMode);
   save();
