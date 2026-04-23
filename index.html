@@ -178,7 +178,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .note textarea{width:100%;flex:1;border:0;outline:0;background:transparent;
   resize:none;padding-top:.3rem;line-height:1.4;pointer-events:none;}
 .note textarea.editable{pointer-events:auto;}
-.note-meta{font-size:.64rem;opacity:.62;margin-top:4px;}
 .resize-handle{position:absolute;right:0;bottom:0;width:22px;height:22px;
   cursor:se-resize;z-index:5;display:flex;align-items:flex-end;
   justify-content:flex-end;padding:4px;}
@@ -762,18 +761,15 @@ function makeNote(note){
       <button class="mini-btn" data-action="del" tabindex="-1" type="button">×</button>
     </div>
     <textarea spellcheck="false" readonly></textarea>
-    <div class="note-meta"></div>
     <canvas class="note-canvas"></canvas>
     <div class="resize-handle" data-resize></div>
   `;
   const ta=el.querySelector('textarea');
-  const meta=el.querySelector('.note-meta');
   const nc=el.querySelector('canvas.note-canvas');
   ta.value=note.text;ta.style.color=note.textColor;ta.style.fontSize=note.fontSize+'px';
-  meta.textContent='mod. '+new Date(note.updatedAt||Date.now()).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   ta.addEventListener('input',()=>{
     note.text=ta.value;note.updatedAt=Date.now();
-    meta.textContent='mod. '+fmtTime();save();
+    save();
   });
 
   // Testo — click sul corpo
