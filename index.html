@@ -1081,6 +1081,13 @@ logoutBtn.addEventListener('click', async () => {
   try {
     const client = await getClient();
     const { data: { session } } = await client.auth.getSession();
+
+    // Siamo nel popup OAuth: Supabase ha già salvato la sessione → chiudi
+    if (window.opener && session) {
+      window.close();
+      return;
+    }
+
     renderAuth(session);
     client.auth.onAuthStateChange((_e, session) => renderAuth(session));
   } catch {
