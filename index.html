@@ -39,6 +39,35 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   touch-action:none;user-select:none;
 }
 
+/* Auth — dentro il drawer */
+.auth-drawer-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.auth-google-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:42px;height:42px;border-radius:13px;
+  border:1px solid var(--border);background:var(--surface);
+  box-shadow:var(--ssoft);flex-shrink:0;
+}
+.auth-google-btn:hover{background:color-mix(in srgb,var(--primary) 6%,var(--surface));}
+.auth-avatar{
+  width:32px;height:32px;border-radius:999px;
+  background:var(--primary);color:#fff;
+  display:grid;place-items:center;
+  font-size:.8rem;font-weight:700;flex-shrink:0;overflow:hidden;
+}
+.auth-logout-btn{
+  width:42px;height:42px;border-radius:13px;
+  display:grid;place-items:center;font-size:1rem;
+  border:1px solid var(--border);background:var(--surface);
+  flex-shrink:0;opacity:.7;transition:opacity .15s;
+}
+.auth-logout-btn:hover{opacity:1;color:var(--danger);}
+.auth-spinner{
+  width:16px;height:16px;border-radius:999px;
+  border:2px solid var(--border);border-top-color:var(--primary);
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 /* Clock */
 .clock{position:fixed;top:10px;left:10px;z-index:30;
   padding:.28rem .6rem;border-radius:11px;background:var(--surface);
@@ -214,6 +243,25 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 </div>
 
 <div class="drawer" id="drawer">
+  <!-- Auth section -->
+  <div class="dsec" id="authDrawerSec">
+    <!-- guest -->
+    <div class="auth-drawer-row" id="authGuestRow">
+      <button class="auth-google-btn" id="googleBtn" type="button" title="Accedi con Google">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+      </button>
+    </div>
+    <!-- logged in -->
+    <div class="auth-drawer-row" id="authUserRow" style="display:none;">
+      <div class="auth-avatar" id="authAvatar"></div>
+      <button class="auth-logout-btn" id="authLogoutBtn" type="button" title="Logout">↩</button>
+    </div>
+  </div>
   <div class="dsec" style="flex-direction:row;align-items:center;gap:8px;">
     <button class="dbtn" id="clockToggleBtn" type="button" title="Mostra/nascondi orologio"
       style="min-height:42px;width:42px;padding:0;display:grid;place-items:center;font-size:1.25rem;">🕐</button>
@@ -939,6 +987,105 @@ $('importFile').addEventListener('change',e=>{
   reader.readAsText(file);
 });
 
+})();
+</script>
+
+<!-- ── SUPABASE AUTH — lazy-loaded ── -->
+<script type="module">
+const SUPABASE_URL     = 'https://qphyrsdtegxvnwaqixeb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwaHlyc2R0ZWd4dm53YXFpeGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzAxMzAsImV4cCI6MjA5MjYwNjEzMH0.DbFOqe5TcyejFPSqbPwq8menddWNoAKn1BapoOgDKkY';
+
+const googleBtn   = document.getElementById('googleBtn');
+const guestRow    = document.getElementById('authGuestRow');
+const userRow     = document.getElementById('authUserRow');
+const avatarEl    = document.getElementById('authAvatar');
+const logoutBtn   = document.getElementById('authLogoutBtn');
+
+let sb = null;
+
+async function getClient() {
+  if (sb) return sb;
+  const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+  sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return sb;
+}
+
+// ── Render ────────────────────────────────────────────────
+function renderAuth(session) {
+  if (session?.user) {
+    const meta   = session.user.user_metadata ?? {};
+    const name   = meta.full_name ?? meta.name ?? meta.user_name
+                 ?? session.user.email?.split('@')[0] ?? '?';
+    const avatar = meta.avatar_url ?? meta.picture ?? null;
+
+    guestRow.style.display = 'none';
+    userRow.style.display  = 'flex';
+    avatarEl.innerHTML = avatar
+      ? `<img src="${avatar}" alt="" style="width:100%;height:100%;border-radius:999px;object-fit:cover;">`
+      : name.charAt(0).toUpperCase();
+  } else {
+    userRow.style.display  = 'none';
+    guestRow.style.display = '';
+    googleBtn.disabled = false;
+    googleBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>`;
+  }
+}
+
+// ── Login Google (popup) ──────────────────────────────────
+googleBtn.addEventListener('click', async () => {
+  googleBtn.disabled = true;
+  googleBtn.innerHTML = '<span class="auth-spinner"></span>';
+
+  try {
+    const client     = await getClient();
+    const redirectTo = window.location.href.split('?')[0].split('#')[0];
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error || !data?.url) throw error ?? new Error();
+
+    const popup = window.open(
+      data.url, 'sb-oauth',
+      'width=520,height=640,popup=yes,left=' +
+        Math.round(window.screenX + (window.outerWidth  - 520) / 2) +
+        ',top='  + Math.round(window.screenY + (window.outerHeight - 640) / 2)
+    );
+
+    if (!popup) { window.location.href = data.url; return; }
+
+    const iv = setInterval(async () => {
+      if (!popup.closed) return;
+      clearInterval(iv);
+      const { data: { session } } = await (await getClient()).auth.getSession();
+      renderAuth(session);
+    }, 600);
+
+  } catch {
+    renderAuth(null);
+  }
+});
+
+// ── Logout ────────────────────────────────────────────────
+logoutBtn.addEventListener('click', async () => {
+  (await getClient()).auth.signOut();
+});
+
+// ── Bootstrap ─────────────────────────────────────────────
+(async () => {
+  try {
+    const client = await getClient();
+    const { data: { session } } = await client.auth.getSession();
+    renderAuth(session);
+    client.auth.onAuthStateChange((_e, session) => renderAuth(session));
+  } catch {
+    renderAuth(null);
+  }
 })();
 </script>
 </body>
