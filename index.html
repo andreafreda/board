@@ -220,12 +220,10 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 
 /* Notes layer */
 .notes-layer{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
-.note{pointer-events:auto;}
 
 /* Cursors layer (remote users) */
 #cursorsLayer{position:absolute;inset:0;pointer-events:none;z-index:5;overflow:visible;}
 .remote-cursor{position:absolute;pointer-events:none;
-  transition:left .06s linear,top .06s linear;
   display:flex;flex-direction:column;align-items:flex-start;gap:1px;
   opacity:1;transition:left .06s linear,top .06s linear,opacity .3s;}
 .remote-cursor.fading{opacity:0;}
@@ -307,7 +305,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .d-copy-btn.copied{color:var(--primary);border-color:color-mix(in srgb,var(--primary) 40%,transparent);}
 
 /* Note */
-.note{position:absolute;border-radius:15px 15px 18px 15px;
+.note{pointer-events:auto;position:absolute;border-radius:15px 15px 18px 15px;
   box-shadow:0 10px 22px rgba(0,0,0,.13);border:1px solid rgba(0,0,0,.08);
   padding:1.1rem .75rem .6rem;display:flex;flex-direction:column;
   transform:rotate(var(--rot,0deg));min-width:120px;min-height:100px;}
@@ -643,6 +641,11 @@ function exitViewMode(){
   document.querySelector('.corner').style.cssText='';
   $('viewBanner')?.classList.remove('on');
   sketch.style.pointerEvents='';
+  // Restore interactivity on all note sub-elements
+  notesLayer.querySelectorAll('textarea').forEach(t=>{t.readOnly=false;t.style.pointerEvents='';});
+  notesLayer.querySelectorAll('.note-canvas').forEach(nc=>{nc.style.pointerEvents='';});
+  notesLayer.querySelectorAll('.note-head').forEach(h=>{h.style.pointerEvents='';});
+  notesLayer.querySelectorAll('.resize-handle').forEach(r=>{r.style.pointerEvents='';});
 }
 
 $('viewExitBtn')?.addEventListener('click',()=>{
@@ -872,7 +875,7 @@ function newBoard(){
 }
 
 function dupBoard(board){
-  if(board.id===state.activeBoardId)syncActiveBoard();
+  syncActiveBoard(); // always flush active board before cloning any board
   const dup=clone(board);
   dup.id=uid();
   dup.notes=dup.notes.map(n=>({...n,id:uid()}));
@@ -1480,7 +1483,7 @@ updateClock();syncDraw();renderPresets();
 initDrawSlider();initTxtSlider();updateDrawPreview();
 document.title=state.boards.find(b=>b.id===state.activeBoardId)?.name||'Board';
 renderBoardList();
-window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampPan();applyPan();},80);});
+window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampPan();applyPan();save();},80);});
 
 // ── Bridge for module script ──────────────────────────────
 window._boardApp={
