@@ -335,6 +335,24 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   pointer-events:none;border-radius:0 0 inherit inherit;z-index:4;}
 .note-canvas.draw-on{pointer-events:auto;cursor:crosshair;}
 .note-canvas.eraser-on{pointer-events:auto;cursor:cell;}
+
+/* Sync status badge */
+.sync-badge{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);
+  z-index:30;font-size:.63rem;padding:.15rem .5rem;border-radius:999px;
+  display:flex;align-items:center;gap:4px;pointer-events:none;
+  background:var(--surface);border:1px solid var(--border);
+  box-shadow:var(--ssoft);opacity:0;transition:opacity .4s;}
+.sync-badge.show{opacity:1;}
+.sync-dot{width:6px;height:6px;border-radius:999px;flex-shrink:0;}
+.sync-badge.saved  .sync-dot{background:#4fa84f;}
+.sync-badge.saving .sync-dot{background:#c8a020;}
+.sync-badge.offline .sync-dot{background:#e05c5c;}
+.sync-toast{position:fixed;bottom:54px;left:50%;transform:translateX(-50%);
+  z-index:55;font-size:.78rem;font-weight:600;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:.4rem .85rem;box-shadow:var(--shadow);
+  pointer-events:none;opacity:0;transition:opacity .3s;}
+.sync-toast.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -351,7 +369,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.0.9</div>
+<div class="version">v.1.1.0</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -474,6 +492,9 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 
 <button class="fab-fs" id="fullBtn" type="button">⛶</button>
 <div class="pan-ind" id="panInd"></div>
+
+<div class="sync-badge" id="syncBadge"><div class="sync-dot"></div><span id="syncLabel">Saved</span></div>
+<div class="sync-toast" id="syncToast"></div>
 
 <div class="view-banner" id="viewBanner">
   <span style="opacity:.55;font-size:.9rem;">👁</span>
@@ -1137,12 +1158,13 @@ addNoteBtn.addEventListener('click',e=>{
   const vw=window.innerWidth,vh=window.innerHeight;
   const cx=Math.round(-state.panX+(vw/2)-105);
   const cy=Math.round(-state.panY+(vh/2)-90);
-  state.notes.push({id:uid(),text:'',color:state.noteColor,
+  const newNote={id:uid(),text:'',color:state.noteColor,
     x:Math.max(4,Math.min(state.boardW-214,cx)),
     y:Math.max(4,Math.min(state.boardH-184,cy)),
     w:210,h:180,rot:+(Math.random()*4-2).toFixed(1),
-    textColor:'#1f2328',fontSize:15,noteStrokes:[],updatedAt:Date.now()});
-  renderNotes();save();
+    textColor:'#1f2328',fontSize:15,noteStrokes:[],updatedAt:Date.now()};
+  state.notes.push(newNote);renderNotes();save();
+  window._boardApp?.broadcastNoteCreate?.(newNote);
 });
 
 // ── TEXT MODE ────────────────────────────────────────────
@@ -1220,15 +1242,24 @@ function sketchPos(e){
 sketch.addEventListener('pointerdown',e=>{
   if(!state.drawMode)return;
   drawing=true;sketch.setPointerCapture(e.pointerId);
-  boardStroke={points:[sketchPos(e)],color:state.penColor,
+  boardStroke={_id:uid(),points:[sketchPos(e)],color:state.penColor,
     size:state.eraser?state.eraserSize:state.penSize,eraser:state.eraser};
   state.strokes.push(boardStroke);redrawBoard();
 });
 sketch.addEventListener('pointermove',e=>{
   if(!drawing||!boardStroke)return;
-  boardStroke.points.push(sketchPos(e));redrawBoard();
+  const pt=sketchPos(e);boardStroke.points.push(pt);redrawBoard();
+  window._boardApp?.broadcastStrokePt?.({
+    strokeId:boardStroke._id,type:'board',x:pt.x,y:pt.y,
+    color:boardStroke.color,size:boardStroke.size,eraser:boardStroke.eraser});
 });
-window.addEventListener('pointerup',()=>{if(drawing){drawing=false;boardStroke=null;save();}});
+window.addEventListener('pointerup',()=>{
+  if(drawing){
+    drawing=false;
+    if(boardStroke)window._boardApp?.broadcastStrokeEnd?.({strokeId:boardStroke._id,type:'board'});
+    boardStroke=null;save();
+  }
+});
 
 // ── CONFIRM POPUP ────────────────────────────────────────
 function showConfirm(anchorEl,onConfirm,msg){
@@ -1297,7 +1328,8 @@ function makeNote(note){
   const ta=el.querySelector('textarea');
   const nc=el.querySelector('canvas.note-canvas');
   ta.value=note.text;ta.style.color=note.textColor;ta.style.fontSize=note.fontSize+'px';
-  ta.addEventListener('input',()=>{note.text=ta.value;note.updatedAt=Date.now();save();});
+  ta.addEventListener('input',()=>{note.text=ta.value;note.updatedAt=Date.now();save();
+    window._boardApp?.broadcastNoteText?.(note.id,note.text,note.updatedAt);});
 
   el.addEventListener('click',e=>{
     if(!state.textMode)return;
@@ -1308,9 +1340,11 @@ function makeNote(note){
   el.querySelector('[data-action="del"]').addEventListener('click',e=>{
     e.stopPropagation();
     showConfirm(e.currentTarget,()=>{
-      state.notes=state.notes.filter(n=>n.id!==note.id);
-      if(activeNote&&activeNote.note.id===note.id)deactivateNote();
+      const delId=note.id;
+      state.notes=state.notes.filter(n=>n.id!==delId);
+      if(activeNote&&activeNote.note.id===delId)deactivateNote();
       renderNotes();save();
+      window._boardApp?.broadcastNoteDelete?.(delId);
     });
   });
   el.querySelector('[data-action="dup"]').addEventListener('click',e=>{
@@ -1320,6 +1354,7 @@ function makeNote(note){
       y:Math.min(state.boardH-note.h-4,note.y+20),
       noteStrokes:clone(note.noteStrokes||[]),updatedAt:Date.now()};
     state.notes.push(dup);renderNotes();save();
+    window._boardApp?.broadcastNoteCreate?.(dup);
   });
 
   const head=el.querySelector('.note-head');
@@ -1333,12 +1368,16 @@ function makeNote(note){
       note.x=Math.max(4,Math.min(state.boardW-note.w-4,e.clientX-state.panX-drag.ox));
       note.y=Math.max(4,Math.min(state.boardH-note.h-4,e.clientY-state.panY-drag.oy));
       el.style.left=note.x+'px';el.style.top=note.y+'px';
+      note.updatedAt=Date.now();
+      window._boardApp?.broadcastNoteUpdate?.(note.id,note.x,note.y,note.w,note.h,note.updatedAt);
     }
     if(resizing&&resizing.id===note.id){
       note.w=Math.max(120,Math.min(state.boardW-note.x-4,resizing.sw+(e.clientX-resizing.sx)));
       note.h=Math.max(100,Math.min(state.boardH-note.y-4,resizing.sh+(e.clientY-resizing.sy)));
       el.style.width=note.w+'px';el.style.height=note.h+'px';
       resizeNoteCanvas(nc,note);
+      note.updatedAt=Date.now();
+      window._boardApp?.broadcastNoteUpdate?.(note.id,note.x,note.y,note.w,note.h,note.updatedAt);
     }
   });
   el.addEventListener('pointerup',()=>{
@@ -1360,12 +1399,24 @@ function makeNote(note){
   nc.addEventListener('pointerdown',e=>{
     if(!state.drawMode)return;
     nd=true;nc.setPointerCapture(e.pointerId);
-    ns={points:[np(e)],color:state.penColor,
+    ns={_id:uid(),points:[np(e)],color:state.penColor,
       size:state.eraser?state.eraserSize:state.penSize,eraser:state.eraser};
     note.noteStrokes.push(ns);redrawNoteCanvas(nc,note);e.stopPropagation();
   });
-  nc.addEventListener('pointermove',e=>{if(!nd||!ns)return;ns.points.push(np(e));redrawNoteCanvas(nc,note);});
-  nc.addEventListener('pointerup',()=>{if(nd){nd=false;ns=null;save();}});
+  nc.addEventListener('pointermove',e=>{
+    if(!nd||!ns)return;
+    const pt=np(e);ns.points.push(pt);redrawNoteCanvas(nc,note);
+    window._boardApp?.broadcastStrokePt?.({
+      strokeId:ns._id,type:'note',noteId:note.id,x:pt.x,y:pt.y,
+      color:ns.color,size:ns.size,eraser:ns.eraser});
+  });
+  nc.addEventListener('pointerup',()=>{
+    if(nd){
+      nd=false;
+      if(ns)window._boardApp?.broadcastStrokeEnd?.({strokeId:ns._id,type:'note',noteId:note.id});
+      ns=null;save();
+    }
+  });
   nc.addEventListener('pointercancel',()=>{nd=false;ns=null;});
   if(state.drawMode&&!state.eraser)nc.classList.add('draw-on');
   if(state.drawMode&&state.eraser)nc.classList.add('eraser-on');
@@ -1437,6 +1488,7 @@ window._boardApp={
   applyBoardSize,renderBoardList,renderNotes,redrawBoard,
   renderMembersSection,switchBoard,
   enterViewMode,exitViewMode,
+  makeNoteEl:makeNote,
   get isViewMode(){return isViewMode;},
   stopVisibilityWatcher:null,
   joinPresenceChannel:null,
@@ -1446,6 +1498,9 @@ window._boardApp={
   sbUpdateBoardName:null,sbUpdateVisibility:null,
   sbAddMember:null,sbRemoveMember:null,sbUpdateMemberRole:null,
   refreshMembers:null,
+  broadcastNoteUpdate:null,broadcastNoteText:null,
+  broadcastNoteCreate:null,broadcastNoteDelete:null,
+  broadcastStrokePt:null,broadcastStrokeEnd:null,
 };
 
 })();
@@ -1801,13 +1856,37 @@ async function joinPresenceChannel(boardId) {
     // ── Cursor broadcast → remote cursor layer ────────────
     .on('broadcast', { event: 'cursor' }, ({ payload }) => {
       if (!payload || payload.userId === myKey) return;
-      // Find peer name + color from presence state
       const ps = _presenceChannel.presenceState();
-      const peerPayload = Object.values(ps).flat()
-        .find(p => p.userId === payload.userId);
-      const peerName  = peerPayload?.name  ?? 'Guest';
+      const peerPayload = Object.values(ps).flat().find(p => p.userId === payload.userId);
+      const peerName  = peerPayload?.name ?? 'Guest';
       const peerColor = presenceColor(payload.userId);
       upsertRemoteCursor(payload.userId, payload.x, payload.y, peerName, peerColor);
+    })
+    // ── Note sync ─────────────────────────────────────────
+    .on('broadcast', { event: 'note:update' }, ({ payload }) => {
+      if (!payload || payload.userId === myKey) return;
+      handleNoteUpdate(payload);
+    })
+    .on('broadcast', { event: 'note:text' }, ({ payload }) => {
+      if (!payload || payload.userId === myKey) return;
+      handleNoteText(payload);
+    })
+    .on('broadcast', { event: 'note:create' }, ({ payload }) => {
+      if (!payload || payload.userId === myKey) return;
+      handleNoteCreate(payload);
+    })
+    .on('broadcast', { event: 'note:delete' }, ({ payload }) => {
+      if (!payload || payload.userId === myKey) return;
+      handleNoteDelete(payload);
+    })
+    // ── Stroke sync ───────────────────────────────────────
+    .on('broadcast', { event: 'stroke:pt' }, ({ payload }) => {
+      if (!payload || payload.userId === myKey) return;
+      handleStrokePt(payload);
+    })
+    .on('broadcast', { event: 'stroke:end' }, ({ payload }) => {
+      if (!payload || payload.userId === myKey) return;
+      handleStrokeEnd(payload);
     })
     .subscribe(async status => {
       if (status === 'SUBSCRIBED') {
@@ -1843,45 +1922,229 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// ── F7 — Sync badge ───────────────────────────────────────
+let _syncHideTimer = null;
+function setSyncStatus(status) {
+  const badge = document.getElementById('syncBadge');
+  const label = document.getElementById('syncLabel');
+  if (!badge || !label) return;
+  badge.className = 'sync-badge show ' + status;
+  label.textContent = status === 'saved' ? 'Saved' : status === 'saving' ? 'Saving…' : 'Offline';
+  clearTimeout(_syncHideTimer);
+  if (status === 'saved') _syncHideTimer = setTimeout(() => badge.classList.remove('show'), 2500);
+}
+function showSyncToast(msg) {
+  const t = document.getElementById('syncToast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+window.addEventListener('offline', () => setSyncStatus('offline'));
+window.addEventListener('online',  () => {
+  if (!currentUser) return;
+  showSyncToast('Reconnected — syncing…');
+  doSbSave();
+});
+
+// ── F7 — Broadcast functions ──────────────────────────────
+// All functions are no-ops if no channel is open or user not logged in.
+let _lastNoteBroadcastMs = 0;
+function broadcastNoteUpdate(id, x, y, w, h, updatedAt) {
+  if (!_presenceChannel || !currentUser) return;
+  const now = Date.now();
+  if (now - _lastNoteBroadcastMs < 33) return; // 30 fps cap
+  _lastNoteBroadcastMs = now;
+  _presenceChannel.send({ type: 'broadcast', event: 'note:update',
+    payload: { id, x, y, w, h, updatedAt, userId: currentUser.id } });
+}
+function broadcastNoteText(id, text, updatedAt) {
+  if (!_presenceChannel || !currentUser) return;
+  _presenceChannel.send({ type: 'broadcast', event: 'note:text',
+    payload: { id, text, updatedAt, userId: currentUser.id } });
+}
+function broadcastNoteCreate(note) {
+  if (!_presenceChannel || !currentUser) return;
+  _presenceChannel.send({ type: 'broadcast', event: 'note:create',
+    payload: { note, userId: currentUser.id } });
+}
+function broadcastNoteDelete(id) {
+  if (!_presenceChannel || !currentUser) return;
+  _presenceChannel.send({ type: 'broadcast', event: 'note:delete',
+    payload: { id, userId: currentUser.id } });
+}
+function broadcastStrokePt(data) {
+  if (!_presenceChannel || !currentUser) return;
+  _presenceChannel.send({ type: 'broadcast', event: 'stroke:pt',
+    payload: { ...data, userId: currentUser.id } });
+}
+function broadcastStrokeEnd(data) {
+  if (!_presenceChannel || !currentUser) return;
+  _presenceChannel.send({ type: 'broadcast', event: 'stroke:end',
+    payload: { ...data, userId: currentUser.id } });
+}
+
+// ── F7 — Receive handlers ─────────────────────────────────
+const _liveStrokes = new Map(); // strokeId → {points, color, size, eraser, type, noteId}
+
+function handleNoteUpdate({ id, x, y, w, h, updatedAt }) {
+  const app = window._boardApp;
+  const note = app?.state.notes.find(n => n.id === id);
+  if (!note) return;
+  if (updatedAt && note.updatedAt && updatedAt < note.updatedAt) return; // last-write-wins
+  note.x = x; note.y = y; note.w = w; note.h = h;
+  if (updatedAt) note.updatedAt = updatedAt;
+  const el = document.querySelector(`.note[data-id="${id}"]`);
+  if (!el) return;
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+  el.style.width = w + 'px'; el.style.height = h + 'px';
+  // Resize + redraw note canvas
+  const nc = el.querySelector('canvas.note-canvas');
+  if (nc) {
+    const dpr = window.devicePixelRatio || 1;
+    const ch = h - 34;
+    nc.width = Math.round(w * dpr); nc.height = Math.round(ch * dpr);
+    nc.style.width = w + 'px'; nc.style.height = ch + 'px';
+    const c = nc.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    (note.noteStrokes || []).forEach(s => {
+      if (!s.points || s.points.length < 2) return;
+      c.globalCompositeOperation = s.eraser ? 'destination-out' : 'source-over';
+      c.strokeStyle = s.eraser ? 'rgba(0,0,0,1)' : (s.color || '#1f2328');
+      c.lineWidth = s.size || 7;
+      c.beginPath(); c.moveTo(s.points[0].x, s.points[0].y);
+      s.points.slice(1).forEach(p => c.lineTo(p.x, p.y)); c.stroke();
+    });
+    c.globalCompositeOperation = 'source-over';
+  }
+}
+
+function handleNoteText({ id, text, updatedAt }) {
+  const app = window._boardApp;
+  const note = app?.state.notes.find(n => n.id === id);
+  if (!note) return;
+  if (updatedAt && note.updatedAt && updatedAt < note.updatedAt) return;
+  note.text = text;
+  if (updatedAt) note.updatedAt = updatedAt;
+  const ta = document.querySelector(`.note[data-id="${id}"] textarea`);
+  if (ta && ta !== document.activeElement) ta.value = text;
+}
+
+function handleNoteCreate({ note }) {
+  const app = window._boardApp;
+  if (!app || !note?.id) return;
+  if (app.state.notes.find(n => n.id === note.id)) return; // dedupe
+  app.state.notes.push(note);
+  const el = app.makeNoteEl?.(note);
+  if (el) document.getElementById('notesLayer')?.appendChild(el);
+}
+
+function handleNoteDelete({ id }) {
+  const app = window._boardApp;
+  if (!app || !id) return;
+  app.state.notes = app.state.notes.filter(n => n.id !== id);
+  document.querySelector(`.note[data-id="${id}"]`)?.remove();
+}
+
+function handleStrokePt({ strokeId, type, noteId, x, y, color, size, eraser }) {
+  let live = _liveStrokes.get(strokeId);
+  if (!live) {
+    live = { points: [], color, size, eraser, type, noteId };
+    _liveStrokes.set(strokeId, live);
+  }
+  const prev = live.points[live.points.length - 1];
+  live.points.push({ x, y });
+  if (!prev) return; // need 2 points to draw a segment
+  // Draw segment incrementally on the appropriate canvas
+  let canvas = null;
+  if (type === 'board') {
+    canvas = document.getElementById('sketch');
+  } else if (type === 'note' && noteId) {
+    canvas = document.querySelector(`.note[data-id="${noteId}"] canvas.note-canvas`);
+  }
+  if (!canvas) return;
+  const c = canvas.getContext('2d');
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  c.globalCompositeOperation = eraser ? 'destination-out' : 'source-over';
+  c.strokeStyle = eraser ? 'rgba(0,0,0,1)' : (color || '#1f2328');
+  c.lineWidth = size || 7;
+  c.beginPath(); c.moveTo(prev.x, prev.y); c.lineTo(x, y); c.stroke();
+  c.globalCompositeOperation = 'source-over';
+}
+
+function handleStrokeEnd({ strokeId, type, noteId }) {
+  const live = _liveStrokes.get(strokeId);
+  if (!live) return;
+  const app = window._boardApp;
+  if (app && live.points.length >= 2) {
+    // Commit to state so redrawBoard/redrawNoteCanvas stays consistent
+    const stroke = { points: live.points, color: live.color, size: live.size, eraser: live.eraser };
+    if (type === 'board') {
+      app.state.strokes.push(stroke);
+    } else if (type === 'note' && noteId) {
+      const note = app.state.notes.find(n => n.id === noteId);
+      if (note) { if (!note.noteStrokes) note.noteStrokes = []; note.noteStrokes.push(stroke); }
+    }
+  }
+  _liveStrokes.delete(strokeId);
+}
+
 let sbSaveTimer = null;
+let _sbRetryDelay = 0;
+const _SB_MAX_RETRY = 30000;
+
 async function doSbSave() {
   const app = window._boardApp;
   if (!currentUser || !app) return;
-  const client = await getClient();
-  app.syncActiveBoard();
-  const b = app.state.boards.find(bd => bd.id === app.state.activeBoardId);
-  if (!b) return;
-  const ts = new Date().toISOString();
-  const isOwnerBoard = !b.ownerId || b.ownerId === currentUser.id;
+  setSyncStatus('saving');
+  try {
+    const client = await getClient();
+    app.syncActiveBoard();
+    const b = app.state.boards.find(bd => bd.id === app.state.activeBoardId);
+    if (!b) return;
+    const ts = new Date().toISOString();
+    const isOwnerBoard = !b.ownerId || b.ownerId === currentUser.id;
 
-  // Only the board owner can update board metadata
-  if (isOwnerBoard) {
-    await client.from('boards').upsert({
-      id: b.id, owner_id: currentUser.id,
-      name: b.name, width: b.width, height: b.height,
-      visibility: b.visibility || 'private',
-      updated_at: ts,
+    // Only the board owner can update board metadata
+    if (isOwnerBoard) {
+      await client.from('boards').upsert({
+        id: b.id, owner_id: currentUser.id,
+        name: b.name, width: b.width, height: b.height,
+        visibility: b.visibility || 'private',
+        updated_at: ts,
+      });
+    }
+
+    if (b.notes.length > 0) {
+      await client.from('notes').upsert(
+        b.notes.map(n => ({ id: n.id, board_id: b.id, owner_id: currentUser.id, data: n, updated_at: ts }))
+      );
+    }
+    // Delete notes removed from this board
+    const { data: existing } = await client.from('notes').select('id').eq('board_id', b.id);
+    const curIds = new Set(b.notes.map(n => n.id));
+    const toDelete = (existing || []).map(r => r.id).filter(id => !curIds.has(id));
+    if (toDelete.length) await client.from('notes').delete().in('id', toDelete);
+
+    // One strokes row per board (id = board.id as deterministic upsert key)
+    await client.from('strokes').upsert({
+      id: b.id, board_id: b.id, owner_id: currentUser.id, data: b.strokes, updated_at: ts,
     });
-  }
 
-  if (b.notes.length > 0) {
-    await client.from('notes').upsert(
-      b.notes.map(n => ({ id: n.id, board_id: b.id, owner_id: currentUser.id, data: n, updated_at: ts }))
-    );
+    setSyncStatus('saved');
+    _sbRetryDelay = 0; // reset backoff on success
+  } catch (err) {
+    console.warn('doSbSave failed:', err?.message ?? err);
+    setSyncStatus('offline');
+    // Exponential backoff retry (2s → 4s → 8s → … → 30s max)
+    _sbRetryDelay = _sbRetryDelay ? Math.min(_sbRetryDelay * 2, _SB_MAX_RETRY) : 2000;
+    sbSaveTimer = setTimeout(doSbSave, _sbRetryDelay);
   }
-  // Delete notes removed from this board
-  const { data: existing } = await client.from('notes').select('id').eq('board_id', b.id);
-  const curIds = new Set(b.notes.map(n => n.id));
-  const toDelete = (existing || []).map(r => r.id).filter(id => !curIds.has(id));
-  if (toDelete.length) await client.from('notes').delete().in('id', toDelete);
-
-  // One strokes row per board (id = board.id as deterministic upsert key)
-  await client.from('strokes').upsert({
-    id: b.id, board_id: b.id, owner_id: currentUser.id, data: b.strokes, updated_at: ts,
-  });
 }
 
 function scheduleSbSave() {
+  setSyncStatus('saving');
   clearTimeout(sbSaveTimer);
   sbSaveTimer = setTimeout(doSbSave, 1500);
 }
@@ -1925,6 +2188,12 @@ async function renderAuth(session) {
       app.refreshMembers       = refreshMembers;
       app.joinPresenceChannel  = joinPresenceChannel;
       app.leavePresenceChannel = leavePresenceChannel;
+      app.broadcastNoteUpdate  = broadcastNoteUpdate;
+      app.broadcastNoteText    = broadcastNoteText;
+      app.broadcastNoteCreate  = broadcastNoteCreate;
+      app.broadcastNoteDelete  = broadcastNoteDelete;
+      app.broadcastStrokePt    = broadcastStrokePt;
+      app.broadcastStrokeEnd   = broadcastStrokeEnd;
     }
 
     // Load boards from Supabase, preserving any offline guest work first
@@ -2023,6 +2292,12 @@ async function renderAuth(session) {
       app.refreshMembers       = null;
       app.joinPresenceChannel  = null;
       app.leavePresenceChannel = null;
+      app.broadcastNoteUpdate  = null;
+      app.broadcastNoteText    = null;
+      app.broadcastNoteCreate  = null;
+      app.broadcastNoteDelete  = null;
+      app.broadcastStrokePt    = null;
+      app.broadcastStrokeEnd   = null;
       await leavePresenceChannel();
 
       // Restore guest boards from localStorage
