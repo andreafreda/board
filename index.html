@@ -38,51 +38,62 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   transform-origin:0 0;touch-action:none;user-select:none;
 }
 
-/* Auth in drawer */
-.auth-drawer-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.auth-google-btn{display:flex;align-items:center;justify-content:center;
-  width:42px;height:42px;border-radius:13px;
+/* Auth card */
+.d-auth{padding:.35rem 0 .55rem;border-bottom:1px solid var(--border);margin-bottom:.1rem;}
+.d-google-btn{width:100%;height:46px;border-radius:14px;
   border:1px solid var(--border);background:var(--surface);
-  box-shadow:var(--ssoft);flex-shrink:0;}
-.auth-google-btn:hover{background:color-mix(in srgb,var(--primary) 6%,var(--surface));}
-.auth-avatar{width:32px;height:32px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--ssoft);transition:box-shadow .15s,transform .15s;}
+.d-google-btn:hover{box-shadow:var(--shadow);transform:translateY(-1px);}
+.d-google-btn:active{transform:translateY(0);}
+.d-user-card{display:flex;align-items:center;gap:10px;padding:.42rem .5rem;
+  border-radius:14px;
+  background:color-mix(in srgb,var(--primary) 9%,transparent);
+  border:1px solid color-mix(in srgb,var(--primary) 22%,transparent);}
+.auth-avatar{width:34px;height:34px;border-radius:999px;
   background:var(--primary);color:#fff;display:grid;place-items:center;
-  font-size:.8rem;font-weight:700;flex-shrink:0;overflow:hidden;}
-.auth-logout-btn{width:42px;height:42px;border-radius:13px;
-  display:grid;place-items:center;font-size:1rem;
-  border:1px solid var(--border);background:var(--surface);
-  flex-shrink:0;opacity:.7;transition:opacity .15s;}
-.auth-logout-btn:hover{opacity:1;color:var(--danger);}
-.auth-spinner{width:16px;height:16px;border-radius:999px;
+  font-size:.82rem;font-weight:700;flex-shrink:0;overflow:hidden;}
+.d-uname{flex:1;font-size:.79rem;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.d-logout-btn{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  font-size:.88rem;border:1px solid var(--border);background:var(--surface);
+  opacity:.6;transition:opacity .15s,color .15s;flex-shrink:0;}
+.d-logout-btn:hover{opacity:1;color:var(--danger);}
+.auth-spinner{width:18px;height:18px;border-radius:999px;
   border:2px solid var(--border);border-top-color:var(--primary);
   animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* Board list in drawer */
-.board-guest{display:flex;align-items:center;justify-content:center;
-  padding:.4rem;font-size:1.2rem;opacity:.32;cursor:default;}
-.board-list-hd{display:flex;align-items:center;gap:6px;margin-bottom:.25rem;}
-#newBoardBtn{width:30px;height:30px;border-radius:9px;font-size:1rem;font-weight:700;
+.d-sec{padding:.42rem 0;border-top:1px solid var(--border);}
+.d-boards-hdr{display:flex;align-items:center;justify-content:flex-end;
+  min-height:22px;margin-bottom:.3rem;}
+#newBoardBtn{width:26px;height:26px;border-radius:8px;font-size:.95rem;font-weight:700;
   border:1px solid var(--border);background:var(--surface);
-  display:grid;place-items:center;}
-#newBoardBtn:hover{background:color-mix(in srgb,var(--primary) 10%,var(--surface));}
-.board-item{display:flex;align-items:center;gap:3px;
-  padding:.22rem .28rem;border-radius:8px;border:1px solid transparent;}
-.board-item.active{background:color-mix(in srgb,var(--primary) 11%,transparent);
-  border-color:color-mix(in srgb,var(--primary) 28%,transparent);}
-.board-item-name{flex:1;font-size:.81rem;font-weight:500;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  cursor:pointer;min-width:0;padding:.1rem 0;}
-.board-item:not(.active) .board-item-name:hover{opacity:.7;}
-.board-item-acts{display:flex;gap:1px;flex-shrink:0;}
-.bib{width:22px;height:22px;border-radius:6px;font-size:.68rem;
+  display:none;place-items:center;}
+#newBoardBtn:hover{background:color-mix(in srgb,var(--primary) 12%,var(--surface));}
+.d-board{display:flex;align-items:center;gap:6px;padding:.3rem .35rem;
+  border-radius:10px;cursor:pointer;border:1px solid transparent;transition:background .1s;}
+.d-board:hover{background:color-mix(in srgb,var(--border) 42%,transparent);}
+.d-board.active{background:color-mix(in srgb,var(--primary) 10%,transparent);
+  border-color:color-mix(in srgb,var(--primary) 22%,transparent);}
+.d-board.local{cursor:default;}
+.d-board.local:hover{background:color-mix(in srgb,var(--primary) 6%,transparent);}
+.d-dot{width:7px;height:7px;border-radius:999px;background:var(--muted);
+  opacity:.3;flex-shrink:0;transition:opacity .1s,background .1s;}
+.d-board.active .d-dot{background:var(--primary);opacity:1;}
+.d-bname{flex:1;font-size:.82rem;font-weight:500;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.d-acts{display:flex;gap:1px;opacity:0;transition:opacity .12s;flex-shrink:0;}
+.d-board:hover .d-acts,.d-board.active .d-acts{opacity:1;}
+.d-bib{width:22px;height:22px;border-radius:6px;font-size:.68rem;
   display:grid;place-items:center;border:none;background:transparent;
-  opacity:.42;transition:opacity .12s,color .12s;}
-.bib:hover{opacity:1;background:color-mix(in srgb,var(--border) 55%,transparent);}
-.bib.armed{opacity:1;color:var(--danger);}
-.board-item-inp{flex:1;font-size:.81rem;border-radius:6px;
+  color:var(--muted);transition:background .1s,color .1s;}
+.d-bib:hover{background:color-mix(in srgb,var(--border) 65%,transparent);color:var(--text);}
+.d-bib.del:hover{color:var(--danger);}
+.d-binp{flex:1;font-size:.82rem;border-radius:7px;
   border:1px solid var(--primary);background:var(--surface);
-  padding:0 4px;height:26px;color:var(--text);outline:none;min-width:0;}
+  padding:0 5px;height:26px;color:var(--text);outline:none;min-width:0;}
 
 /* Clock */
 .clock{position:fixed;top:10px;left:10px;z-index:30;
@@ -244,7 +255,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.0.2</div>
+<div class="version">v.1.0.3</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -254,10 +265,11 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 </div>
 
 <div class="drawer" id="drawer">
-  <!-- Auth -->
-  <div class="dsec" id="authDrawerSec">
-    <div class="auth-drawer-row" id="authGuestRow">
-      <button class="auth-google-btn" id="googleBtn" type="button" title="Accedi con Google">
+
+  <!-- ── Auth ── -->
+  <div class="d-auth">
+    <div id="authGuestRow">
+      <button class="d-google-btn" id="googleBtn" type="button" title="Sign in with Google">
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -266,60 +278,50 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
         </svg>
       </button>
     </div>
-    <div class="auth-drawer-row" id="authUserRow" style="display:none;">
+    <div class="d-user-card" id="authUserRow" style="display:none;">
       <div class="auth-avatar" id="authAvatar"></div>
-      <button class="auth-logout-btn" id="authLogoutBtn" type="button" title="Logout">↩</button>
+      <span class="d-uname" id="authUserName"></span>
+      <button class="d-logout-btn" id="authLogoutBtn" type="button" title="Sign out">↩</button>
     </div>
   </div>
 
-  <!-- Board list -->
-  <div class="dsec" id="boardListSec">
-    <div class="board-guest" id="boardGuest" title="Accedi per le board cloud">🔒</div>
-    <div id="boardListContent" style="display:none;">
-      <div class="board-list-hd">
-        <button id="newBoardBtn" type="button" title="Nuova board">＋</button>
-      </div>
-      <div id="boardsList"></div>
+  <!-- ── Boards ── -->
+  <div class="d-sec">
+    <div class="d-boards-hdr">
+      <button id="newBoardBtn" type="button" title="New board">＋</button>
     </div>
+    <div id="boardsList"></div>
   </div>
 
-  <!-- Clock toggle -->
-  <div class="dsec" style="flex-direction:row;align-items:center;gap:8px;">
-    <button class="dbtn" id="clockToggleBtn" type="button" title="Mostra/nascondi orologio"
-      style="min-height:42px;width:42px;padding:0;display:grid;place-items:center;font-size:1.25rem;">🕐</button>
-  </div>
-
-  <!-- Board size -->
-  <div class="dsec">
+  <!-- ── Board size ── -->
+  <div class="d-sec">
     <div class="preset-row" id="presetRow"></div>
-    <div class="size-inputs">
+    <div class="size-inputs" style="margin-top:.3rem;">
       <input type="number" id="boardW" min="400" max="4000" step="1"/>
       <span>×</span>
       <input type="number" id="boardH" min="300" max="3000" step="1"/>
     </div>
-    <div style="display:flex;gap:6px;">
-      <button class="dbtn" id="applySize" type="button" title="Applica dimensioni" style="flex:1;font-size:1.2rem;">✅</button>
-      <button class="dbtn" id="centerBoard" type="button" title="Centra board" style="flex:1;font-size:1.2rem;">⊞</button>
+    <div style="display:flex;gap:6px;margin-top:.3rem;">
+      <button class="dbtn" id="applySize" type="button" title="Apply size" style="flex:1;font-size:1.15rem;">✅</button>
+      <button class="dbtn" id="centerBoard" type="button" title="Center board" style="flex:1;font-size:1.15rem;">⊞</button>
     </div>
   </div>
 
-  <!-- Actions -->
-  <div class="dsec">
+  <!-- ── Actions ── -->
+  <div class="d-sec">
     <div style="display:flex;gap:6px;">
-      <button class="dbtn" id="clearSketch" type="button" title="Cancella disegno" style="flex:1;font-size:1.2rem;">🧹</button>
-      <button class="dbtn danger" id="resetBtn" type="button" title="Reset board" style="flex:1;font-size:1.2rem;">🗑️</button>
+      <button class="dbtn" id="clockToggleBtn" type="button" title="Toggle clock" style="flex:1;font-size:1.15rem;">🕐</button>
+      <button class="dbtn" id="clearSketch" type="button" title="Clear drawings" style="flex:1;font-size:1.15rem;">🧹</button>
+      <button class="dbtn danger" id="resetBtn" type="button" title="Reset board" style="flex:1;font-size:1.15rem;">🗑️</button>
     </div>
-  </div>
-
-  <!-- Export / Import -->
-  <div class="dsec">
-    <div style="display:flex;gap:6px;">
-      <button class="dbtn" id="exportBtn" type="button" title="Esporta board" style="flex:1;font-size:1.2rem;">📤</button>
-      <label class="dbtn" title="Importa board" style="flex:1;font-size:1.2rem;display:grid;place-items:center;cursor:pointer;">📥
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button class="dbtn" id="exportBtn" type="button" title="Export board" style="flex:1;font-size:1.15rem;">📤</button>
+      <label class="dbtn" title="Import board" style="flex:1;font-size:1.15rem;display:grid;place-items:center;cursor:pointer;">📥
         <input type="file" id="importFile" accept=".json" style="display:none;"/>
       </label>
     </div>
   </div>
+
 </div>
 
 <!-- Note toolbar -->
@@ -517,49 +519,64 @@ function showPanInd(){
 }
 
 // ── BOARD LIST ───────────────────────────────────────────
-let delBoardArmed=null,delBoardTimer=null;
-
 function renderBoardList(){
-  const guestEl=$('boardGuest'),contentEl=$('boardListContent'),listEl=$('boardsList');
+  const listEl=$('boardsList'),newBtn=$('newBoardBtn');
   if(!listEl)return;
   const isUser=!!(window._boardApp?.currentUser);
-  guestEl.style.display=isUser?'none':'';
-  contentEl.style.display=isUser?'block':'none';
-  if(!isUser)return;
+  if(newBtn)newBtn.style.display=isUser?'grid':'none';
 
   listEl.innerHTML='';
+
+  if(!isUser){
+    // Guest: show local board as read-only item
+    const b=state.boards.find(b=>b.id===state.activeBoardId)||state.boards[0];
+    if(b){
+      const item=document.createElement('div');
+      item.className='d-board local active';
+      const dot=document.createElement('div');dot.className='d-dot';
+      const name=document.createElement('span');
+      name.className='d-bname';name.textContent=b.name;name.title=b.name;
+      item.append(dot,name);
+      listEl.appendChild(item);
+    }
+    return;
+  }
+
   state.boards.forEach(b=>{
     const item=document.createElement('div');
-    item.className='board-item'+(b.id===state.activeBoardId?' active':'');
+    item.className='d-board'+(b.id===state.activeBoardId?' active':'');
+    item.addEventListener('click',()=>switchBoard(b.id));
 
-    const nameSpan=document.createElement('span');
-    nameSpan.className='board-item-name';
-    nameSpan.textContent=b.name;nameSpan.title=b.name;
-    nameSpan.addEventListener('click',()=>switchBoard(b.id));
+    const dot=document.createElement('div');dot.className='d-dot';
+    const name=document.createElement('span');
+    name.className='d-bname';name.textContent=b.name;name.title=b.name;
 
-    const acts=document.createElement('div');
-    acts.className='board-item-acts';
-
-    function mkBib(icon,title,cb){
+    const acts=document.createElement('div');acts.className='d-acts';
+    function mkbib(icon,cls,title,cb){
       const btn=document.createElement('button');
-      btn.type='button';btn.className='bib';btn.title=title;btn.textContent=icon;
+      btn.type='button';btn.className='d-bib '+cls;btn.title=title;btn.textContent=icon;
       btn.addEventListener('click',e=>{e.stopPropagation();cb(btn);});
       return btn;
     }
-    const renBtn=mkBib('✏️','Rinomina',()=>startRenameBoard(b,nameSpan));
-    const dupBtn=mkBib('⧉','Duplica',()=>dupBoard(b));
-    const delBtn=mkBib('🗑','Elimina',btn=>armDeleteBoard(b.id,btn));
-    if(b.id===delBoardArmed)delBtn.classList.add('armed');
-    acts.append(renBtn,dupBtn,delBtn);
-    item.append(nameSpan,acts);
+    acts.append(
+      mkbib('✏️','','Rename',()=>startRenameBoard(b,name)),
+      mkbib('⧉','','Duplicate',()=>dupBoard(b)),
+      ...(state.boards.length>1?[mkbib('🗑','del','Delete',btn=>confirmDeleteBoard(b.id,btn))]:[])
+    );
+    item.append(dot,name,acts);
     listEl.appendChild(item);
   });
+}
+
+function confirmDeleteBoard(boardId,anchorEl){
+  const b=state.boards.find(bd=>bd.id===boardId);
+  showConfirm(anchorEl,()=>execDeleteBoard(boardId),`Delete "${b?.name||'board'}"?`);
 }
 
 function startRenameBoard(board,nameEl){
   const orig=board.name;
   const inp=document.createElement('input');
-  inp.className='board-item-inp';inp.value=orig;
+  inp.className='d-binp';inp.value=orig;
   nameEl.replaceWith(inp);inp.focus();inp.select();
   const done=()=>{
     board.name=inp.value.trim()||orig;
@@ -612,17 +629,6 @@ function dupBoard(board){
   window._boardApp?.sbCreateBoard?.(dup);
 }
 
-function armDeleteBoard(boardId,btn){
-  if(state.boards.length<=1)return;
-  if(delBoardArmed===boardId){
-    clearTimeout(delBoardTimer);delBoardArmed=null;
-    execDeleteBoard(boardId);return;
-  }
-  if(delBoardArmed){clearTimeout(delBoardTimer);renderBoardList();}
-  delBoardArmed=boardId;
-  btn.classList.add('armed');
-  delBoardTimer=setTimeout(()=>{delBoardArmed=null;renderBoardList();},3000);
-}
 
 function execDeleteBoard(boardId){
   const idx=state.boards.findIndex(b=>b.id===boardId);
@@ -1082,21 +1088,13 @@ $('clearSketch').addEventListener('click',()=>{
   state.strokes=[];redrawBoard();save();openDrawer(false);
 });
 
-let resetPending=false,resetTimer=null;
-$('resetBtn').addEventListener('click',()=>{
-  if(!resetPending){
-    resetPending=true;
-    $('resetBtn').style.boxShadow='0 0 0 2px var(--danger)';
-    resetTimer=setTimeout(()=>{
-      resetPending=false;$('resetBtn').style.boxShadow='';
-    },3000);return;
-  }
-  clearTimeout(resetTimer);resetPending=false;
-  $('resetBtn').style.boxShadow='';
-  if(activeNote)deactivateNote();
-  state.notes=[];state.strokes=[];
-  renderNotes();redrawBoard();
-  save();openDrawer(false);
+$('resetBtn').addEventListener('click',e=>{
+  showConfirm(e.currentTarget,()=>{
+    if(activeNote)deactivateNote();
+    state.notes=[];state.strokes=[];
+    renderNotes();redrawBoard();
+    save();openDrawer(false);
+  },'Clear all notes and drawings?');
 });
 
 // ── EXPORT / IMPORT (active board) ───────────────────────
@@ -1278,12 +1276,14 @@ async function renderAuth(session) {
     avatarEl.innerHTML = avatar
       ? `<img src="${avatar}" alt="" style="width:100%;height:100%;border-radius:999px;object-fit:cover;">`
       : name.charAt(0).toUpperCase();
+    const nameEl = document.getElementById('authUserName');
+    if (nameEl) nameEl.textContent = name;
 
     if (app) {
       app.currentUser = currentUser;
-      app.scheduleSbSave  = scheduleSbSave;
-      app.sbCreateBoard   = sbCreateBoard;
-      app.sbDeleteBoard   = sbDeleteBoardFn;
+      app.scheduleSbSave    = scheduleSbSave;
+      app.sbCreateBoard     = sbCreateBoard;
+      app.sbDeleteBoard     = sbDeleteBoardFn;
       app.sbUpdateBoardName = sbUpdateBoardName;
     }
 
@@ -1293,15 +1293,33 @@ async function renderAuth(session) {
       let boards = await sbLoadBoards(client);
 
       if (!boards?.length) {
-        // First login: create a default board in Supabase
-        const defBoard = app?.mkBoard?.() ?? {
-          id: crypto.randomUUID(), name: 'Board',
-          width: 1366, height: 768, panX: 0, panY: 0, notes: [], strokes: [],
+        // First login: carry over the current guest board content
+        app?.syncActiveBoard?.();
+        const guestBoard = app?.state?.boards?.find(b => b.id === app?.state?.activeBoardId);
+        const defBoard = {
+          id: crypto.randomUUID(),
+          name: guestBoard?.name || 'Board',
+          width: guestBoard?.width || 1366,
+          height: guestBoard?.height || 768,
+          panX: 0, panY: 0,
+          notes: guestBoard?.notes || [],
+          strokes: guestBoard?.strokes || [],
         };
+        const ts = new Date().toISOString();
         await client.from('boards').insert({
           id: defBoard.id, owner_id: session.user.id,
           name: defBoard.name, width: defBoard.width, height: defBoard.height,
         });
+        if (defBoard.notes.length) {
+          await client.from('notes').insert(
+            defBoard.notes.map(n => ({ id: n.id, board_id: defBoard.id, owner_id: session.user.id, data: n, updated_at: ts }))
+          );
+        }
+        if (defBoard.strokes.length) {
+          await client.from('strokes').insert({
+            id: defBoard.id, board_id: defBoard.id, owner_id: session.user.id, data: defBoard.strokes, updated_at: ts,
+          });
+        }
         boards = [defBoard];
       }
 
@@ -1327,6 +1345,10 @@ async function renderAuth(session) {
     googleBtn.innerHTML = GOOGLE_SVG;
 
     if (app) {
+      // Save current logged-in state to localStorage before switching to guest
+      app.syncActiveBoard?.();
+      try { localStorage.setItem('board-lite-v10', JSON.stringify(app.state)); } catch {}
+
       app.currentUser       = null;
       app.scheduleSbSave    = null;
       app.sbCreateBoard     = null;
