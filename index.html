@@ -212,6 +212,39 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .draw-layer.on{pointer-events:auto;cursor:crosshair;}
 .draw-layer.eraser-on{cursor:cell;}
 
+/* View mode banner */
+.view-banner{position:fixed;bottom:58px;left:50%;transform:translateX(-50%);z-index:50;
+  display:none;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--border);border-radius:999px;
+  padding:.32rem 1rem;box-shadow:var(--shadow);backdrop-filter:blur(14px);
+  white-space:nowrap;max-width:calc(100vw - 40px);}
+.view-banner.on{display:flex;}
+.view-banner-name{font-size:.8rem;font-weight:600;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;max-width:200px;}
+.view-exit-btn{width:28px;height:28px;border-radius:8px;flex-shrink:0;
+  display:grid;place-items:center;font-size:.85rem;
+  border:1px solid var(--border);background:var(--surface);
+  opacity:.7;transition:opacity .15s,background .12s;}
+.view-exit-btn:hover{opacity:1;background:color-mix(in srgb,var(--primary) 8%,var(--surface));}
+
+/* Visibility badge */
+.vis-btn{width:22px;height:22px;border-radius:6px;font-size:.72rem;
+  display:grid;place-items:center;border:none;background:transparent;
+  opacity:.35;transition:background .1s,color .1s,opacity .1s;flex-shrink:0;}
+.d-board:hover .vis-btn,.d-board.active .vis-btn{opacity:.75;}
+.vis-btn.pub{opacity:1;color:var(--primary);}
+.vis-btn:hover{opacity:1!important;background:color-mix(in srgb,var(--border) 65%,transparent);}
+
+/* Share link row */
+.d-share-row{display:flex;gap:6px;padding:.1rem .35rem .2rem;}
+.d-copy-btn{flex:1;min-height:30px;border-radius:9px;border:1px solid var(--border);
+  background:var(--surface);font-size:.8rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  transition:background .12s,border-color .12s,color .12s;}
+.d-copy-btn:hover{background:color-mix(in srgb,var(--primary) 7%,var(--surface));
+  border-color:color-mix(in srgb,var(--primary) 30%,transparent);}
+.d-copy-btn.copied{color:var(--primary);border-color:color-mix(in srgb,var(--primary) 40%,transparent);}
+
 /* Note */
 .note{position:absolute;border-radius:15px 15px 18px 15px;
   box-shadow:0 10px 22px rgba(0,0,0,.13);border:1px solid rgba(0,0,0,.08);
@@ -256,7 +289,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.0.4</div>
+<div class="version">v.1.0.5</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -368,6 +401,12 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 <button class="fab-fs" id="fullBtn" type="button">⛶</button>
 <div class="pan-ind" id="panInd"></div>
 
+<div class="view-banner" id="viewBanner">
+  <span style="opacity:.55;font-size:.9rem;">👁</span>
+  <span class="view-banner-name" id="viewBoardName"></span>
+  <button class="view-exit-btn" id="viewExitBtn" type="button" title="Exit view mode — open app">🏠</button>
+</div>
+
 <div class="confirm-pop" id="confirmPop">
   <p id="confirmMsg">Eliminare il post-it?</p>
   <div class="pop-row">
@@ -413,7 +452,8 @@ function clone(o){return JSON.parse(JSON.stringify(o));}
 function fmtTime(){return new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});}
 function fmtDate(){return new Date().toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});}
 function mkBoard(opts={}){
-  return {id:uid(),name:'Board',width:1366,height:768,panX:0,panY:0,notes:[],strokes:[],...opts};
+  return {id:uid(),name:'Board',width:1366,height:768,panX:0,panY:0,
+    notes:[],strokes:[],visibility:'private',...opts};
 }
 
 // ── State init (with migration from v1 flat format) ───────
@@ -460,6 +500,7 @@ function loadBoardIntoState(b){
 
 // ── Save ─────────────────────────────────────────────────
 function save(){
+  if(isViewMode)return;
   syncActiveBoard();
   const isUser=!!(window._boardApp?.currentUser);
   if(!isUser){
@@ -478,6 +519,41 @@ function save(){
 let drag=null,resizing=null,drawing=false,boardStroke=null,rt=null;
 let activeNote=null,pendingDelete=null;
 let panning=false,panStart=null,panOrigin=null,panTimer=null;
+let isViewMode=false;
+
+// ── VIEW MODE ─────────────────────────────────────────────
+function enterViewMode(board){
+  isViewMode=true;
+  // Load board data
+  state.boardW=board.width||1366;state.boardH=board.height||768;
+  state.panX=0;state.panY=0;
+  state.notes=board.notes||[];state.strokes=board.strokes||[];
+  board.style&&board.style; // noop (board is data, not DOM)
+  applyBoardSize(board.width||1366,board.height||768);
+  // Hide all editing UI
+  document.querySelector('.corner').style.cssText='display:none!important';
+  // Show view banner
+  const nm=$('viewBoardName');if(nm)nm.textContent=board.name||'Board';
+  $('viewBanner')?.classList.add('on');
+  document.title=(board.name||'Board')+' · Board';
+  // Ensure canvases / notes are truly non-interactive
+  sketch.style.pointerEvents='none';
+  notesLayer.querySelectorAll('textarea').forEach(t=>{t.readOnly=true;t.style.pointerEvents='none';});
+  notesLayer.querySelectorAll('.note-canvas').forEach(nc=>{nc.style.pointerEvents='none';});
+  notesLayer.querySelectorAll('.note-head').forEach(h=>{h.style.pointerEvents='none';});
+  notesLayer.querySelectorAll('.resize-handle').forEach(r=>{r.style.pointerEvents='none';});
+}
+function exitViewMode(){
+  isViewMode=false;
+  document.querySelector('.corner').style.cssText='';
+  $('viewBanner')?.classList.remove('on');
+  sketch.style.pointerEvents='';
+}
+
+$('viewExitBtn')?.addEventListener('click',()=>{
+  // Navigate to app root (strips ?board= param)
+  window.location.href=location.origin+location.pathname;
+});
 
 // ── CLOCK ────────────────────────────────────────────────
 function updateClock(){
@@ -544,13 +620,32 @@ function renderBoardList(){
   }
 
   state.boards.forEach(b=>{
+    if(!b.visibility)b.visibility='private';
+    const isActive=b.id===state.activeBoardId;
+    const isPublic=b.visibility==='public';
+
     const item=document.createElement('div');
-    item.className='d-board'+(b.id===state.activeBoardId?' active':'');
+    item.className='d-board'+(isActive?' active':'');
     item.addEventListener('click',()=>switchBoard(b.id));
 
     const dot=document.createElement('div');dot.className='d-dot';
     const name=document.createElement('span');
     name.className='d-bname';name.textContent=b.name;name.title=b.name;
+
+    // Visibility toggle badge
+    const visBtn=document.createElement('button');
+    visBtn.type='button';
+    visBtn.className='vis-btn'+(isPublic?' pub':'');
+    visBtn.textContent=isPublic?'🌐':'🔒';
+    visBtn.title=isPublic?'Public — click to make private':'Private — click to share';
+    visBtn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const newVis=isPublic?'private':'public';
+      b.visibility=newVis;
+      save();
+      window._boardApp?.sbUpdateVisibility?.(b.id,newVis);
+      renderBoardList();
+    });
 
     const acts=document.createElement('div');acts.className='d-acts';
     function mkbib(icon,cls,title,cb){
@@ -562,10 +657,32 @@ function renderBoardList(){
     acts.append(
       mkbib('✏️','','Rename',()=>startRenameBoard(b,name)),
       mkbib('⧉','','Duplicate',()=>dupBoard(b)),
-      ...(state.boards.length>1?[mkbib('🗑','del','Delete',btn=>confirmDeleteBoard(b.id,btn))]:[])
+      ...(state.boards.length>1?[mkbib('✕','del','Delete',btn=>confirmDeleteBoard(b.id,btn))]:[])
     );
-    item.append(dot,name,acts);
+    item.append(dot,name,visBtn,acts);
     listEl.appendChild(item);
+
+    // Share row: show copy-link button when board is public
+    if(isPublic){
+      const shareRow=document.createElement('div');
+      shareRow.className='d-share-row';
+      const copyBtn=document.createElement('button');
+      copyBtn.type='button';copyBtn.className='d-copy-btn';
+      copyBtn.title='Copy share link';
+      copyBtn.innerHTML='🔗';
+      let copyTimer=null;
+      copyBtn.addEventListener('click',e=>{
+        e.stopPropagation();
+        const link=`${location.origin}${location.pathname}?board=${b.id}`;
+        navigator.clipboard.writeText(link).then(()=>{
+          copyBtn.innerHTML='✓';copyBtn.classList.add('copied');
+          clearTimeout(copyTimer);
+          copyTimer=setTimeout(()=>{copyBtn.innerHTML='🔗';copyBtn.classList.remove('copied');},2000);
+        }).catch(()=>prompt('Share link:',link));
+      });
+      shareRow.appendChild(copyBtn);
+      listEl.appendChild(shareRow);
+    }
   });
 }
 
@@ -1147,8 +1264,11 @@ window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampP
 window._boardApp={
   state,mkBoard,syncActiveBoard,loadBoardIntoState,
   applyBoardSize,renderBoardList,renderNotes,redrawBoard,
+  enterViewMode,exitViewMode,
+  get isViewMode(){return isViewMode;},
   currentUser:null,
-  scheduleSbSave:null,sbCreateBoard:null,sbDeleteBoard:null,sbUpdateBoardName:null,
+  scheduleSbSave:null,sbCreateBoard:null,sbDeleteBoard:null,
+  sbUpdateBoardName:null,sbUpdateVisibility:null,
 };
 
 })();
@@ -1217,6 +1337,45 @@ async function sbDeleteBoardFn(boardId) {
   await client.from('boards').delete().eq('id', boardId);
 }
 
+async function updateBoardVisibility(boardId, vis) {
+  if (!currentUser) return;
+  const client = await getClient();
+  await client.from('boards')
+    .update({ visibility: vis, updated_at: new Date().toISOString() })
+    .eq('id', boardId).eq('owner_id', currentUser.id);
+}
+
+// ── Public board loader (view mode) ──────────────────────
+async function loadPublicBoard(boardId) {
+  const app = window._boardApp;
+  try {
+    const client = await getClient();
+    const { data: meta, error } = await client
+      .from('boards').select('*').eq('id', boardId).single();
+    if (error || !meta) throw new Error('Board not found');
+    if (meta.visibility !== 'public') throw new Error('Board is private');
+
+    const [{ data: notes }, { data: strokes }] = await Promise.all([
+      client.from('notes').select('id,data').eq('board_id', boardId),
+      client.from('strokes').select('data').eq('board_id', boardId).limit(1),
+    ]);
+
+    const board = {
+      id: meta.id, name: meta.name,
+      width: meta.width || 1366, height: meta.height || 768,
+      panX: 0, panY: 0,
+      notes: (notes || []).map(r => r.data),
+      strokes: strokes?.length ? (strokes[0].data || []) : [],
+      visibility: meta.visibility,
+    };
+
+    if (app?.enterViewMode) app.enterViewMode(board);
+  } catch (err) {
+    console.warn('loadPublicBoard:', err.message);
+    // Fall through — app shows normally (board not found or private)
+  }
+}
+
 let sbSaveTimer = null;
 async function doSbSave() {
   const app = window._boardApp;
@@ -1281,11 +1440,12 @@ async function renderAuth(session) {
     if (nameEl) nameEl.textContent = name;
 
     if (app) {
-      app.currentUser = currentUser;
-      app.scheduleSbSave    = scheduleSbSave;
-      app.sbCreateBoard     = sbCreateBoard;
-      app.sbDeleteBoard     = sbDeleteBoardFn;
-      app.sbUpdateBoardName = sbUpdateBoardName;
+      app.currentUser         = currentUser;
+      app.scheduleSbSave      = scheduleSbSave;
+      app.sbCreateBoard       = sbCreateBoard;
+      app.sbDeleteBoard       = sbDeleteBoardFn;
+      app.sbUpdateBoardName   = sbUpdateBoardName;
+      app.sbUpdateVisibility  = updateBoardVisibility;
     }
 
     // Load boards from Supabase, preserving any offline guest work first
@@ -1367,11 +1527,12 @@ async function renderAuth(session) {
       app.syncActiveBoard?.();
       try { localStorage.setItem('board-lite-v10', JSON.stringify(app.state)); } catch {}
 
-      app.currentUser       = null;
-      app.scheduleSbSave    = null;
-      app.sbCreateBoard     = null;
-      app.sbDeleteBoard     = null;
-      app.sbUpdateBoardName = null;
+      app.currentUser        = null;
+      app.scheduleSbSave     = null;
+      app.sbCreateBoard      = null;
+      app.sbDeleteBoard      = null;
+      app.sbUpdateBoardName  = null;
+      app.sbUpdateVisibility = null;
 
       // Restore guest boards from localStorage
       let raw = {};
@@ -1428,6 +1589,14 @@ logoutBtn.addEventListener('click', async () => {
 
 // ── Bootstrap ─────────────────────────────────────────────
 (async () => {
+  // View mode: ?board=<uuid> in URL — load public board read-only, skip normal auth flow
+  const urlBoard = new URLSearchParams(location.search).get('board');
+  if (urlBoard) {
+    await loadPublicBoard(urlBoard);
+    return; // don't mount editing UI
+  }
+
+  // Normal app flow
   try {
     const client = await getClient();
     const { data: { session } } = await client.auth.getSession();
