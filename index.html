@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
-<title>Board Lite v10</title>
+<title>Board</title>
 <style>
 :root{
   --bg:#f6f4ee;--board:#fffaf0;--grid:rgba(31,35,40,.06);
@@ -26,7 +26,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 /* Viewport */
 #viewport{position:fixed;inset:0;overflow:hidden;background:var(--bg);}
 
-/* Board — dimensione fissa, navigabile via pan */
+/* Board */
 #board{
   position:absolute;top:0;left:0;
   width:1366px;height:768px;
@@ -35,38 +35,54 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
     linear-gradient(to bottom,var(--grid) 1px,transparent 1px),
     var(--board);
   background-size:34px 34px,34px 34px,auto;
-  transform-origin:0 0;
-  touch-action:none;user-select:none;
+  transform-origin:0 0;touch-action:none;user-select:none;
 }
 
-/* Auth — dentro il drawer */
+/* Auth in drawer */
 .auth-drawer-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.auth-google-btn{
-  display:flex;align-items:center;justify-content:center;
+.auth-google-btn{display:flex;align-items:center;justify-content:center;
   width:42px;height:42px;border-radius:13px;
   border:1px solid var(--border);background:var(--surface);
-  box-shadow:var(--ssoft);flex-shrink:0;
-}
+  box-shadow:var(--ssoft);flex-shrink:0;}
 .auth-google-btn:hover{background:color-mix(in srgb,var(--primary) 6%,var(--surface));}
-.auth-avatar{
-  width:32px;height:32px;border-radius:999px;
-  background:var(--primary);color:#fff;
-  display:grid;place-items:center;
-  font-size:.8rem;font-weight:700;flex-shrink:0;overflow:hidden;
-}
-.auth-logout-btn{
-  width:42px;height:42px;border-radius:13px;
+.auth-avatar{width:32px;height:32px;border-radius:999px;
+  background:var(--primary);color:#fff;display:grid;place-items:center;
+  font-size:.8rem;font-weight:700;flex-shrink:0;overflow:hidden;}
+.auth-logout-btn{width:42px;height:42px;border-radius:13px;
   display:grid;place-items:center;font-size:1rem;
   border:1px solid var(--border);background:var(--surface);
-  flex-shrink:0;opacity:.7;transition:opacity .15s;
-}
+  flex-shrink:0;opacity:.7;transition:opacity .15s;}
 .auth-logout-btn:hover{opacity:1;color:var(--danger);}
-.auth-spinner{
-  width:16px;height:16px;border-radius:999px;
+.auth-spinner{width:16px;height:16px;border-radius:999px;
   border:2px solid var(--border);border-top-color:var(--primary);
-  animation:spin .7s linear infinite;
-}
+  animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* Board list in drawer */
+.board-guest{display:flex;align-items:center;justify-content:center;
+  padding:.4rem;font-size:1.2rem;opacity:.32;cursor:default;}
+.board-list-hd{display:flex;align-items:center;gap:6px;margin-bottom:.25rem;}
+#newBoardBtn{width:30px;height:30px;border-radius:9px;font-size:1rem;font-weight:700;
+  border:1px solid var(--border);background:var(--surface);
+  display:grid;place-items:center;}
+#newBoardBtn:hover{background:color-mix(in srgb,var(--primary) 10%,var(--surface));}
+.board-item{display:flex;align-items:center;gap:3px;
+  padding:.22rem .28rem;border-radius:8px;border:1px solid transparent;}
+.board-item.active{background:color-mix(in srgb,var(--primary) 11%,transparent);
+  border-color:color-mix(in srgb,var(--primary) 28%,transparent);}
+.board-item-name{flex:1;font-size:.81rem;font-weight:500;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  cursor:pointer;min-width:0;padding:.1rem 0;}
+.board-item:not(.active) .board-item-name:hover{opacity:.7;}
+.board-item-acts{display:flex;gap:1px;flex-shrink:0;}
+.bib{width:22px;height:22px;border-radius:6px;font-size:.68rem;
+  display:grid;place-items:center;border:none;background:transparent;
+  opacity:.42;transition:opacity .12s,color .12s;}
+.bib:hover{opacity:1;background:color-mix(in srgb,var(--border) 55%,transparent);}
+.bib.armed{opacity:1;color:var(--danger);}
+.board-item-inp{flex:1;font-size:.81rem;border-radius:6px;
+  border:1px solid var(--primary);background:var(--surface);
+  padding:0 4px;height:26px;color:var(--text);outline:none;min-width:0;}
 
 /* Clock */
 .clock{position:fixed;top:10px;left:10px;z-index:30;
@@ -100,15 +116,10 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .drawer.open{display:block;}
 .dsec{padding:.38rem 0;border-bottom:1px solid var(--border);display:grid;gap:.4rem;}
 .dsec:last-child{border-bottom:0;}
-.dlabel{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
-.sw{display:flex;align-items:center;justify-content:space-between;}
-.sw span{font-size:.86rem;}
-.sw input[type=checkbox]{width:17px;height:17px;accent-color:var(--primary);}
 .drow{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .dbtn{min-height:42px;border-radius:13px;border:1px solid var(--border);
   background:var(--surface);font-size:.84rem;}
 .dbtn.danger{color:var(--danger);}
-.dbtn.full{grid-column:1/-1;}
 .preset-row{display:flex;flex-wrap:wrap;gap:5px;}
 .preset-btn{padding:.3rem .6rem;border-radius:8px;border:1px solid var(--border);
   background:var(--surface);font-size:.76rem;font-weight:600;}
@@ -158,8 +169,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   border:1px solid var(--border);box-shadow:var(--ssoft);
   display:grid;place-items:center;font-size:1.1rem;backdrop-filter:blur(10px);}
 
-
-
 /* Confirm popup */
 .confirm-pop{position:fixed;z-index:60;background:var(--surface);
   border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);
@@ -181,7 +190,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   pointer-events:none;}
 .pan-ind.show{opacity:1;}
 
-/* Notes layer — pointer-events:none, le singole .note:auto */
+/* Notes layer */
 .notes-layer{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
 .note{pointer-events:auto;}
 
@@ -199,7 +208,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .note::before{content:'';position:absolute;top:9px;left:12px;width:36px;height:7px;
   border-radius:999px;background:rgba(255,255,255,.68);}
 .note.text-active{box-shadow:0 0 0 2.5px var(--primary),0 10px 22px rgba(0,0,0,.13);}
-/* Head: z-index:5 per stare SOPRA il note-canvas (z-index:4) */
 .note-head{position:absolute;inset:0 0 auto 0;height:34px;z-index:5;
   display:flex;align-items:center;justify-content:flex-end;
   padding:5px 7px 0 0;gap:5px;cursor:grab;}
@@ -216,7 +224,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .resize-handle::after{content:'';display:block;width:10px;height:10px;
   border-right:2px solid rgba(0,0,0,.22);border-bottom:2px solid rgba(0,0,0,.22);
   border-radius:0 0 4px 0;}
-/* Canvas del post-it: parte da 34px per lasciare la head libera */
 .note-canvas{position:absolute;top:34px;left:0;right:0;bottom:0;
   width:100%;height:calc(100% - 34px);
   pointer-events:none;border-radius:0 0 inherit inherit;z-index:4;}
@@ -237,7 +244,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.0.1</div>
+<div class="version">v.1.0.2</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -247,9 +254,8 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 </div>
 
 <div class="drawer" id="drawer">
-  <!-- Auth section -->
+  <!-- Auth -->
   <div class="dsec" id="authDrawerSec">
-    <!-- guest -->
     <div class="auth-drawer-row" id="authGuestRow">
       <button class="auth-google-btn" id="googleBtn" type="button" title="Accedi con Google">
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -260,16 +266,30 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
         </svg>
       </button>
     </div>
-    <!-- logged in -->
     <div class="auth-drawer-row" id="authUserRow" style="display:none;">
       <div class="auth-avatar" id="authAvatar"></div>
       <button class="auth-logout-btn" id="authLogoutBtn" type="button" title="Logout">↩</button>
     </div>
   </div>
+
+  <!-- Board list -->
+  <div class="dsec" id="boardListSec">
+    <div class="board-guest" id="boardGuest" title="Accedi per le board cloud">🔒</div>
+    <div id="boardListContent" style="display:none;">
+      <div class="board-list-hd">
+        <button id="newBoardBtn" type="button" title="Nuova board">＋</button>
+      </div>
+      <div id="boardsList"></div>
+    </div>
+  </div>
+
+  <!-- Clock toggle -->
   <div class="dsec" style="flex-direction:row;align-items:center;gap:8px;">
     <button class="dbtn" id="clockToggleBtn" type="button" title="Mostra/nascondi orologio"
       style="min-height:42px;width:42px;padding:0;display:grid;place-items:center;font-size:1.25rem;">🕐</button>
   </div>
+
+  <!-- Board size -->
   <div class="dsec">
     <div class="preset-row" id="presetRow"></div>
     <div class="size-inputs">
@@ -282,16 +302,20 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
       <button class="dbtn" id="centerBoard" type="button" title="Centra board" style="flex:1;font-size:1.2rem;">⊞</button>
     </div>
   </div>
+
+  <!-- Actions -->
   <div class="dsec">
     <div style="display:flex;gap:6px;">
       <button class="dbtn" id="clearSketch" type="button" title="Cancella disegno" style="flex:1;font-size:1.2rem;">🧹</button>
       <button class="dbtn danger" id="resetBtn" type="button" title="Reset board" style="flex:1;font-size:1.2rem;">🗑️</button>
     </div>
   </div>
+
+  <!-- Export / Import -->
   <div class="dsec">
     <div style="display:flex;gap:6px;">
       <button class="dbtn" id="exportBtn" type="button" title="Esporta board" style="flex:1;font-size:1.2rem;">📤</button>
-      <label class="dbtn" id="importLabel" title="Importa board" style="flex:1;font-size:1.2rem;display:grid;place-items:center;cursor:pointer;">📥
+      <label class="dbtn" title="Importa board" style="flex:1;font-size:1.2rem;display:grid;place-items:center;cursor:pointer;">📥
         <input type="file" id="importFile" accept=".json" style="display:none;"/>
       </label>
     </div>
@@ -342,7 +366,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 <div class="pan-ind" id="panInd"></div>
 
 <div class="confirm-pop" id="confirmPop">
-  <p>Eliminare il post-it?</p>
+  <p id="confirmMsg">Eliminare il post-it?</p>
   <div class="pop-row">
     <button class="pop-btn" id="confirmNo" type="button">Annulla</button>
     <button class="pop-btn danger" id="confirmYes" type="button">Elimina</button>
@@ -354,17 +378,17 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 'use strict';
 const $=id=>document.getElementById(id);
 
-const viewport=$('viewport'), board=$('board');
-const sketch=$('sketch'), ctx=sketch.getContext('2d');
+const viewport=$('viewport'),board=$('board');
+const sketch=$('sketch'),ctx=sketch.getContext('2d');
 const notesLayer=$('notesLayer');
-const drawer=$('drawer'), hamburger=$('hamburger');
-const clockEl=$('clock'), timeLine=$('timeLine'), dateLine=$('dateLine');
-const clockToggle=$('clockToggle');
-const drawToolbar=$('drawToolbar'), textToolbar=$('textToolbar'), noteToolbar=$('noteToolbar');
-const textModeBtn=$('textModeBtn'), drawModeBtn=$('drawModeBtn');
-const noteModeBtn=$('noteModeBtn'), addNoteBtn=$('addNoteBtn');
-const penBtn=$('penBtn'), eraserBtn=$('eraserBtn');
-const confirmPop=$('confirmPop'), confirmYes=$('confirmYes'), confirmNo=$('confirmNo');
+const drawer=$('drawer'),hamburger=$('hamburger');
+const clockEl=$('clock'),timeLine=$('timeLine'),dateLine=$('dateLine');
+const drawToolbar=$('drawToolbar'),textToolbar=$('textToolbar'),noteToolbar=$('noteToolbar');
+const textModeBtn=$('textModeBtn'),drawModeBtn=$('drawModeBtn');
+const noteModeBtn=$('noteModeBtn'),addNoteBtn=$('addNoteBtn');
+const penBtn=$('penBtn'),eraserBtn=$('eraserBtn');
+const confirmPop=$('confirmPop'),confirmYes=$('confirmYes'),confirmNo=$('confirmNo');
+const confirmMsg=$('confirmMsg');
 
 const NOTE_COLORS=['yellow','pink','blue','green','lilac','orange','mint'];
 const NOTE_COLOR_MAP={yellow:'#f5e36d',pink:'#f6bfd0',blue:'#bfe0f6',green:'#cbe8be',
@@ -385,24 +409,68 @@ function uid(){return crypto.randomUUID();}
 function clone(o){return JSON.parse(JSON.stringify(o));}
 function fmtTime(){return new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});}
 function fmtDate(){return new Date().toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});}
+function mkBoard(opts={}){
+  return {id:uid(),name:'Board',width:1366,height:768,panX:0,panY:0,notes:[],strokes:[],...opts};
+}
 
+// ── State init (with migration from v1 flat format) ───────
 const DEF={
   showClock:true,drawMode:false,textMode:false,noteMode:false,
   noteColor:'yellow',penColor:'#1f2328',penSize:7,eraser:false,eraserSize:28,
-  boardW:1366,boardH:768,panX:0,panY:0,
-  strokes:[],
-  notes:[]
+  activeBoardId:null,boards:[]
 };
+let raw={};
+try{raw=JSON.parse(localStorage.getItem(KEY)||'{}');}catch{}
 
-let state;
-try{state={...DEF,...JSON.parse(localStorage.getItem(KEY)||'{}')};}
-catch{state=clone(DEF);}
-if(!state.boardW)state.boardW=1366;
-if(!state.boardH)state.boardH=768;
-if(state.panX===undefined)state.panX=0;
-if(state.panY===undefined)state.panY=0;
+// Migrate old flat format (notes/strokes at top level)
+if(!raw.boards&&raw.notes){
+  const b=mkBoard({width:raw.boardW||1366,height:raw.boardH||768,
+    panX:raw.panX||0,panY:raw.panY||0,notes:raw.notes||[],strokes:raw.strokes||[]});
+  raw={...raw,boards:[b],activeBoardId:b.id};
+}
 
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch{}}
+let state={...DEF,...raw};
+// Ensure at least one board
+if(!state.boards||!state.boards.length){const b=mkBoard();state.boards=[b];state.activeBoardId=b.id;}
+if(!state.boards.find(b=>b.id===state.activeBoardId))state.activeBoardId=state.boards[0].id;
+
+// Promote active board into flat state (for backward-compat with existing functions)
+{const ab=state.boards.find(b=>b.id===state.activeBoardId);
+ state.boardW=ab.width;state.boardH=ab.height;
+ state.panX=ab.panX||0;state.panY=ab.panY||0;
+ state.notes=ab.notes||[];state.strokes=ab.strokes||[];}
+
+// ── Active board sync ─────────────────────────────────────
+function syncActiveBoard(){
+  const b=state.boards.find(b=>b.id===state.activeBoardId);
+  if(!b)return;
+  b.width=state.boardW;b.height=state.boardH;
+  b.panX=state.panX;b.panY=state.panY;
+  b.notes=state.notes;b.strokes=state.strokes;
+}
+function loadBoardIntoState(b){
+  state.boardW=b.width||1366;state.boardH=b.height||768;
+  state.panX=b.panX||0;state.panY=b.panY||0;
+  state.notes=b.notes||[];state.strokes=b.strokes||[];
+  document.title=b.name||'Board';
+}
+
+// ── Save ─────────────────────────────────────────────────
+function save(){
+  syncActiveBoard();
+  const isUser=!!(window._boardApp?.currentUser);
+  if(!isUser){
+    try{localStorage.setItem(KEY,JSON.stringify(state));}catch{}
+  }else{
+    // Persist only UI prefs locally when logged in
+    const prefs={showClock:state.showClock,noteColor:state.noteColor,
+      penColor:state.penColor,penSize:state.penSize,eraser:state.eraser,eraserSize:state.eraserSize,
+      drawMode:state.drawMode,textMode:state.textMode,noteMode:state.noteMode,
+      activeBoardId:state.activeBoardId};
+    try{localStorage.setItem(KEY+'-prefs',JSON.stringify(prefs));}catch{}
+    window._boardApp?.scheduleSbSave?.();
+  }
+}
 
 let drag=null,resizing=null,drawing=false,boardStroke=null,rt=null;
 let activeNote=null,pendingDelete=null;
@@ -423,37 +491,157 @@ function clampPan(){
   state.panY=Math.max(minY,Math.min(0,state.panY));
 }
 function applyPan(){board.style.transform=`translate(${state.panX}px,${state.panY}px)`;}
-
 function applyBoardSize(w,h){
   state.boardW=w;state.boardH=h;
   board.style.width=w+'px';board.style.height=h+'px';
-  // resize sketch canvas
   const dpr=window.devicePixelRatio||1;
   sketch.width=Math.round(w*dpr);sketch.height=Math.round(h*dpr);
   sketch.style.width=w+'px';sketch.style.height=h+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  // clamp post-it dentro la board
   state.notes.forEach(n=>{
     n.x=Math.max(4,Math.min(w-n.w-4,n.x));
     n.y=Math.max(4,Math.min(h-n.h-4,n.y));
   });
   clampPan();applyPan();renderNotes();redrawBoard();
 }
-
 function centerBoard(){
   const vw=window.innerWidth,vh=window.innerHeight;
   state.panX=Math.min(0,Math.round((vw-state.boardW)/2));
   state.panY=Math.min(0,Math.round((vh-state.boardH)/2));
   clampPan();applyPan();save();
 }
-
 function showPanInd(){
   panInd.textContent=`${-Math.round(state.panX)},${-Math.round(state.panY)}`;
   panInd.classList.add('show');
   clearTimeout(panTimer);panTimer=setTimeout(()=>panInd.classList.remove('show'),1200);
 }
 
-// Preset UI
+// ── BOARD LIST ───────────────────────────────────────────
+let delBoardArmed=null,delBoardTimer=null;
+
+function renderBoardList(){
+  const guestEl=$('boardGuest'),contentEl=$('boardListContent'),listEl=$('boardsList');
+  if(!listEl)return;
+  const isUser=!!(window._boardApp?.currentUser);
+  guestEl.style.display=isUser?'none':'';
+  contentEl.style.display=isUser?'block':'none';
+  if(!isUser)return;
+
+  listEl.innerHTML='';
+  state.boards.forEach(b=>{
+    const item=document.createElement('div');
+    item.className='board-item'+(b.id===state.activeBoardId?' active':'');
+
+    const nameSpan=document.createElement('span');
+    nameSpan.className='board-item-name';
+    nameSpan.textContent=b.name;nameSpan.title=b.name;
+    nameSpan.addEventListener('click',()=>switchBoard(b.id));
+
+    const acts=document.createElement('div');
+    acts.className='board-item-acts';
+
+    function mkBib(icon,title,cb){
+      const btn=document.createElement('button');
+      btn.type='button';btn.className='bib';btn.title=title;btn.textContent=icon;
+      btn.addEventListener('click',e=>{e.stopPropagation();cb(btn);});
+      return btn;
+    }
+    const renBtn=mkBib('✏️','Rinomina',()=>startRenameBoard(b,nameSpan));
+    const dupBtn=mkBib('⧉','Duplica',()=>dupBoard(b));
+    const delBtn=mkBib('🗑','Elimina',btn=>armDeleteBoard(b.id,btn));
+    if(b.id===delBoardArmed)delBtn.classList.add('armed');
+    acts.append(renBtn,dupBtn,delBtn);
+    item.append(nameSpan,acts);
+    listEl.appendChild(item);
+  });
+}
+
+function startRenameBoard(board,nameEl){
+  const orig=board.name;
+  const inp=document.createElement('input');
+  inp.className='board-item-inp';inp.value=orig;
+  nameEl.replaceWith(inp);inp.focus();inp.select();
+  const done=()=>{
+    board.name=inp.value.trim()||orig;
+    nameEl.textContent=board.name;nameEl.title=board.name;
+    inp.replaceWith(nameEl);
+    if(board.id===state.activeBoardId)document.title=board.name;
+    save();window._boardApp?.sbUpdateBoardName?.(board.id,board.name);
+  };
+  inp.addEventListener('blur',done);
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter')inp.blur();
+    if(e.key==='Escape'){inp.value=orig;inp.blur();}
+  });
+}
+
+function switchBoard(id){
+  if(id===state.activeBoardId){openDrawer(false);return;}
+  if(activeNote)deactivateNote();
+  syncActiveBoard();
+  state.activeBoardId=id;
+  const b=state.boards.find(b=>b.id===id);
+  loadBoardIntoState(b);
+  applyBoardSize(b.width,b.height); // calls renderNotes + redrawBoard
+  renderBoardList();
+  openDrawer(false);
+  save();
+}
+
+function newBoard(){
+  if(activeNote)deactivateNote();
+  syncActiveBoard();
+  const b=mkBoard();
+  state.boards.push(b);
+  state.activeBoardId=b.id;
+  loadBoardIntoState(b);
+  applyBoardSize(b.width,b.height);
+  renderBoardList();
+  save();
+  window._boardApp?.sbCreateBoard?.(b);
+}
+
+function dupBoard(board){
+  if(board.id===state.activeBoardId)syncActiveBoard();
+  const dup=clone(board);
+  dup.id=uid();
+  dup.notes=dup.notes.map(n=>({...n,id:uid()}));
+  state.boards.push(dup);
+  renderBoardList();
+  save();
+  window._boardApp?.sbCreateBoard?.(dup);
+}
+
+function armDeleteBoard(boardId,btn){
+  if(state.boards.length<=1)return;
+  if(delBoardArmed===boardId){
+    clearTimeout(delBoardTimer);delBoardArmed=null;
+    execDeleteBoard(boardId);return;
+  }
+  if(delBoardArmed){clearTimeout(delBoardTimer);renderBoardList();}
+  delBoardArmed=boardId;
+  btn.classList.add('armed');
+  delBoardTimer=setTimeout(()=>{delBoardArmed=null;renderBoardList();},3000);
+}
+
+function execDeleteBoard(boardId){
+  const idx=state.boards.findIndex(b=>b.id===boardId);
+  if(idx<0)return;
+  state.boards.splice(idx,1);
+  if(state.activeBoardId===boardId){
+    if(activeNote)deactivateNote();
+    const nb=state.boards[Math.min(idx,state.boards.length-1)];
+    state.activeBoardId=nb.id;
+    loadBoardIntoState(nb);
+    applyBoardSize(nb.width,nb.height);
+  }
+  renderBoardList();save();
+  window._boardApp?.sbDeleteBoard?.(boardId);
+}
+
+$('newBoardBtn')?.addEventListener('click',e=>{e.stopPropagation();newBoard();});
+
+// ── PRESETS ──────────────────────────────────────────────
 function renderPresets(){
   const row=$('presetRow');row.innerHTML='';
   PRESETS.forEach(p=>{
@@ -476,15 +664,13 @@ $('applySize').addEventListener('click',()=>{
 });
 $('centerBoard').addEventListener('click',()=>{centerBoard();openDrawer(false);});
 
-// ── PAN GESTURE ──────────────────────────────────────────
-// Pan solo su area vuota (board o sketch), non sui post-it
+// ── PAN ──────────────────────────────────────────────────
 viewport.addEventListener('pointerdown',e=>{
   if(state.drawMode||state.textMode)return;
   const t=e.target;
   if(t!==board&&t!==sketch&&t!==notesLayer)return;
   panning=true;
-  panStart={x:e.clientX,y:e.clientY};
-  panOrigin={x:state.panX,y:state.panY};
+  panStart={x:e.clientX,y:e.clientY};panOrigin={x:state.panX,y:state.panY};
   viewport.setPointerCapture(e.pointerId);
 },{passive:true});
 viewport.addEventListener('pointermove',e=>{
@@ -733,7 +919,6 @@ function redrawBoard(){
   ctx.globalCompositeOperation='source-over';
 }
 function sketchPos(e){
-  // coordinate relative al canvas della board (no pan: il canvas è dentro board)
   const r=sketch.getBoundingClientRect();
   return{x:e.clientX-r.left,y:e.clientY-r.top};
 }
@@ -751,7 +936,8 @@ sketch.addEventListener('pointermove',e=>{
 window.addEventListener('pointerup',()=>{if(drawing){drawing=false;boardStroke=null;save();}});
 
 // ── CONFIRM POPUP ────────────────────────────────────────
-function showConfirm(anchorEl,onConfirm){
+function showConfirm(anchorEl,onConfirm,msg){
+  confirmMsg.textContent=msg||'Eliminare il post-it?';
   pendingDelete=onConfirm;
   const r=anchorEl.getBoundingClientRect();
   const popW=210,margin=8;
@@ -773,7 +959,6 @@ function renderNotes(){
   notesLayer.innerHTML='';
   state.notes.forEach(n=>notesLayer.appendChild(makeNote(n)));
 }
-
 function resizeNoteCanvas(nc,note){
   const dpr=window.devicePixelRatio||1;
   const ch=note.h-34;
@@ -784,7 +969,6 @@ function resizeNoteCanvas(nc,note){
 }
 function redrawNoteCanvas(nc,note){
   const c=nc.getContext('2d');
-  const dpr=window.devicePixelRatio||1;
   c.clearRect(0,0,note.w,note.h);
   c.lineCap='round';c.lineJoin='round';
   (note.noteStrokes||[]).forEach(s=>{
@@ -797,7 +981,6 @@ function redrawNoteCanvas(nc,note){
   });
   c.globalCompositeOperation='source-over';
 }
-
 function makeNote(note){
   if(!note.w)note.w=210;if(!note.h)note.h=180;
   if(!note.textColor)note.textColor='#1f2328';if(!note.fontSize)note.fontSize=15;
@@ -819,20 +1002,14 @@ function makeNote(note){
   const ta=el.querySelector('textarea');
   const nc=el.querySelector('canvas.note-canvas');
   ta.value=note.text;ta.style.color=note.textColor;ta.style.fontSize=note.fontSize+'px';
-  ta.addEventListener('input',()=>{
-    note.text=ta.value;note.updatedAt=Date.now();
-    save();
-  });
+  ta.addEventListener('input',()=>{note.text=ta.value;note.updatedAt=Date.now();save();});
 
-  // Testo — click sul corpo
   el.addEventListener('click',e=>{
     if(!state.textMode)return;
     if(e.target.closest('[data-action]')||e.target.closest('[data-resize]')||
        e.target.closest('.note-canvas')||e.target.closest('.note-head'))return;
     activateNote(note,el);
   });
-
-  // Del
   el.querySelector('[data-action="del"]').addEventListener('click',e=>{
     e.stopPropagation();
     showConfirm(e.currentTarget,()=>{
@@ -841,8 +1018,6 @@ function makeNote(note){
       renderNotes();save();
     });
   });
-
-  // Dup
   el.querySelector('[data-action="dup"]').addEventListener('click',e=>{
     e.stopPropagation();
     const dup={...clone(note),id:uid(),
@@ -852,7 +1027,6 @@ function makeNote(note){
     state.notes.push(dup);renderNotes();save();
   });
 
-  // Drag dalla head
   const head=el.querySelector('.note-head');
   head.addEventListener('pointerdown',e=>{
     if(e.target.closest('[data-action]'))return;
@@ -877,7 +1051,6 @@ function makeNote(note){
     if(resizing&&resizing.id===note.id){resizing=null;save();}
   });
 
-  // Resize
   const rh=el.querySelector('[data-resize]');
   rh.addEventListener('pointerdown',e=>{
     e.stopPropagation();
@@ -886,32 +1059,19 @@ function makeNote(note){
   });
   rh.addEventListener('click',e=>e.stopPropagation());
 
-  // Note canvas draw — usa getBoundingClientRect (dentro board che è traslata)
-  // r.left/top include già il pan (perché board è traslata nel DOM)
-  // quindi e.clientX - r.left = coordinate locali al canvas. CORRETTO.
   resizeNoteCanvas(nc,note);
   let nd=false,ns=null;
-  function np(e){
-    const r=nc.getBoundingClientRect();
-    return{x:e.clientX-r.left,y:e.clientY-r.top};
-  }
+  function np(e){const r=nc.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
   nc.addEventListener('pointerdown',e=>{
     if(!state.drawMode)return;
     nd=true;nc.setPointerCapture(e.pointerId);
     ns={points:[np(e)],color:state.penColor,
       size:state.eraser?state.eraserSize:state.penSize,eraser:state.eraser};
-    note.noteStrokes.push(ns);redrawNoteCanvas(nc,note);
-    e.stopPropagation();
+    note.noteStrokes.push(ns);redrawNoteCanvas(nc,note);e.stopPropagation();
   });
-  nc.addEventListener('pointermove',e=>{
-    if(!nd||!ns)return;
-    ns.points.push(np(e));redrawNoteCanvas(nc,note);
-  });
-  nc.addEventListener('pointerup',()=>{
-    if(nd){nd=false;ns=null;save();}
-  });
+  nc.addEventListener('pointermove',e=>{if(!nd||!ns)return;ns.points.push(np(e));redrawNoteCanvas(nc,note);});
+  nc.addEventListener('pointerup',()=>{if(nd){nd=false;ns=null;save();}});
   nc.addEventListener('pointercancel',()=>{nd=false;ns=null;});
-
   if(state.drawMode&&!state.eraser)nc.classList.add('draw-on');
   if(state.drawMode&&state.eraser)nc.classList.add('eraser-on');
   return el;
@@ -926,50 +1086,30 @@ let resetPending=false,resetTimer=null;
 $('resetBtn').addEventListener('click',()=>{
   if(!resetPending){
     resetPending=true;
-    $('resetBtn').title='Tocca ancora per confermare';
     $('resetBtn').style.boxShadow='0 0 0 2px var(--danger)';
     resetTimer=setTimeout(()=>{
-      resetPending=false;
-      $('resetBtn').title='Reset board';
-      $('resetBtn').style.boxShadow='';
+      resetPending=false;$('resetBtn').style.boxShadow='';
     },3000);return;
   }
   clearTimeout(resetTimer);resetPending=false;
+  $('resetBtn').style.boxShadow='';
+  if(activeNote)deactivateNote();
   state.notes=[];state.strokes=[];
-  localStorage.removeItem(KEY);
-  location.reload();
+  renderNotes();redrawBoard();
+  save();openDrawer(false);
 });
 
-// ── INIT ─────────────────────────────────────────────────
-setTimeout(()=>{const b=$('clockToggleBtn');if(b)b.style.opacity=(state.showClock!==false)?'1':'.45';},0);
-textModeBtn.classList.toggle('on',!!state.textMode);
-drawModeBtn.classList.toggle('on',!!state.drawMode);
-noteModeBtn.classList.toggle('on',!!state.noteMode);
-if(state.noteMode){noteToolbar.classList.add('visible');renderNoteToolbar();}
-board.style.width=state.boardW+'px';board.style.height=state.boardH+'px';
-initSketchCanvas();
-applyPan();
-renderNotes();
-redrawBoard();
-updateClock();
-syncDraw();
-renderPresets();
-initDrawSlider();
-initTxtSlider();
-updateDrawPreview();
-window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampPan();applyPan();},80);});
-
-
-// ── EXPORT / IMPORT ─────────────────────────────────────
+// ── EXPORT / IMPORT (active board) ───────────────────────
 $('exportBtn').addEventListener('click',()=>{
-  const data=JSON.stringify(state,null,2);
-  const blob=new Blob([data],{type:'application/json'});
+  syncActiveBoard();
+  const b=state.boards.find(bd=>bd.id===state.activeBoardId);
+  const out={name:b.name,width:b.width,height:b.height,notes:b.notes,strokes:b.strokes};
+  const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
   a.href=url;a.download=`board-${ts}.json`;a.click();
-  URL.revokeObjectURL(url);
-  openDrawer(false);
+  URL.revokeObjectURL(url);openDrawer(false);
 });
 
 $('importFile').addEventListener('change',e=>{
@@ -977,35 +1117,57 @@ $('importFile').addEventListener('change',e=>{
   const reader=new FileReader();
   reader.onload=ev=>{
     try{
-      const imported=JSON.parse(ev.target.result);
-      if(typeof imported!=='object'||!imported.notes)throw new Error('formato non valido');
-      Object.assign(state,imported);
-      save();
-      applyBoardSize(state.boardW||1366,state.boardH||768);
-      applyPan();renderNotes();redrawBoard();
-      updateClock();syncDraw();renderPresets();
-      openDrawer(false);
+      const imp=JSON.parse(ev.target.result);
+      if(typeof imp!=='object'||!imp.notes)throw new Error('formato non valido');
+      state.notes=imp.notes||[];
+      state.strokes=imp.strokes||[];
+      if(imp.width)applyBoardSize(imp.width,imp.height||768);
+      else{renderNotes();redrawBoard();}
+      syncActiveBoard();save();renderPresets();openDrawer(false);
     }catch(err){alert('Import fallito: '+err.message);}
     e.target.value='';
   };
   reader.readAsText(file);
 });
 
+// ── INIT ─────────────────────────────────────────────────
+setTimeout(()=>{const b=$('clockToggleBtn');if(b)b.style.opacity=(state.showClock!==false)?'1':'.45';},0);
+textModeBtn.classList.toggle('on',!!state.drawMode===false&&!!state.textMode);
+drawModeBtn.classList.toggle('on',!!state.drawMode);
+noteModeBtn.classList.toggle('on',!!state.noteMode);
+if(state.noteMode){noteToolbar.classList.add('visible');renderNoteToolbar();}
+board.style.width=state.boardW+'px';board.style.height=state.boardH+'px';
+initSketchCanvas();applyPan();renderNotes();redrawBoard();
+updateClock();syncDraw();renderPresets();
+initDrawSlider();initTxtSlider();updateDrawPreview();
+document.title=state.boards.find(b=>b.id===state.activeBoardId)?.name||'Board';
+renderBoardList();
+window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampPan();applyPan();},80);});
+
+// ── Bridge for module script ──────────────────────────────
+window._boardApp={
+  state,mkBoard,syncActiveBoard,loadBoardIntoState,
+  applyBoardSize,renderBoardList,renderNotes,redrawBoard,
+  currentUser:null,
+  scheduleSbSave:null,sbCreateBoard:null,sbDeleteBoard:null,sbUpdateBoardName:null,
+};
+
 })();
 </script>
 
-<!-- ── SUPABASE AUTH — lazy-loaded ── -->
+<!-- ── SUPABASE AUTH + MULTI-BOARD ── -->
 <script type="module">
 const SUPABASE_URL     = 'https://qphyrsdtegxvnwaqixeb.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwaHlyc2R0ZWd4dm53YXFpeGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzAxMzAsImV4cCI6MjA5MjYwNjEzMH0.DbFOqe5TcyejFPSqbPwq8menddWNoAKn1BapoOgDKkY';
 
-const googleBtn   = document.getElementById('googleBtn');
-const guestRow    = document.getElementById('authGuestRow');
-const userRow     = document.getElementById('authUserRow');
-const avatarEl    = document.getElementById('authAvatar');
-const logoutBtn   = document.getElementById('authLogoutBtn');
+const googleBtn  = document.getElementById('googleBtn');
+const guestRow   = document.getElementById('authGuestRow');
+const userRow    = document.getElementById('authUserRow');
+const avatarEl   = document.getElementById('authAvatar');
+const logoutBtn  = document.getElementById('authLogoutBtn');
 
 let sb = null;
+let currentUser = null;
 
 async function getClient() {
   if (sb) return sb;
@@ -1014,9 +1176,98 @@ async function getClient() {
   return sb;
 }
 
-// ── Render ────────────────────────────────────────────────
-function renderAuth(session) {
+// ── Supabase board ops ────────────────────────────────────
+async function sbLoadBoards(client) {
+  const { data: boards } = await client.from('boards').select('*').order('created_at');
+  if (!boards?.length) return null;
+  const loaded = await Promise.all(boards.map(async b => {
+    const [{ data: notes }, { data: strokes }] = await Promise.all([
+      client.from('notes').select('id,data').eq('board_id', b.id),
+      client.from('strokes').select('data').eq('board_id', b.id).limit(1),
+    ]);
+    return {
+      id: b.id, name: b.name,
+      width: b.width || 1366, height: b.height || 768,
+      panX: 0, panY: 0,
+      notes: (notes || []).map(r => r.data),
+      strokes: strokes?.length ? (strokes[0].data || []) : [],
+    };
+  }));
+  return loaded;
+}
+
+async function sbCreateBoard(board) {
+  const client = await getClient();
+  if (!currentUser) return;
+  await client.from('boards').upsert({
+    id: board.id, owner_id: currentUser.id,
+    name: board.name, width: board.width, height: board.height,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+async function sbUpdateBoardName(id, name) {
+  const client = await getClient();
+  if (!currentUser) return;
+  await client.from('boards').update({ name, updated_at: new Date().toISOString() }).eq('id', id);
+}
+
+async function sbDeleteBoardFn(boardId) {
+  const client = await getClient();
+  if (!currentUser) return;
+  await client.from('boards').delete().eq('id', boardId);
+}
+
+let sbSaveTimer = null;
+async function doSbSave() {
+  const app = window._boardApp;
+  if (!currentUser || !app) return;
+  const client = await getClient();
+  app.syncActiveBoard();
+  const b = app.state.boards.find(bd => bd.id === app.state.activeBoardId);
+  if (!b) return;
+  const ts = new Date().toISOString();
+
+  await client.from('boards').upsert({
+    id: b.id, owner_id: currentUser.id,
+    name: b.name, width: b.width, height: b.height, updated_at: ts,
+  });
+
+  if (b.notes.length > 0) {
+    await client.from('notes').upsert(
+      b.notes.map(n => ({ id: n.id, board_id: b.id, owner_id: currentUser.id, data: n, updated_at: ts }))
+    );
+  }
+  // Delete notes removed from this board
+  const { data: existing } = await client.from('notes').select('id').eq('board_id', b.id);
+  const curIds = new Set(b.notes.map(n => n.id));
+  const toDelete = (existing || []).map(r => r.id).filter(id => !curIds.has(id));
+  if (toDelete.length) await client.from('notes').delete().in('id', toDelete);
+
+  // One strokes row per board (id = board.id as deterministic upsert key)
+  await client.from('strokes').upsert({
+    id: b.id, board_id: b.id, owner_id: currentUser.id, data: b.strokes, updated_at: ts,
+  });
+}
+
+function scheduleSbSave() {
+  clearTimeout(sbSaveTimer);
+  sbSaveTimer = setTimeout(doSbSave, 1500);
+}
+
+// ── Auth render ───────────────────────────────────────────
+const GOOGLE_SVG = `<svg width="20" height="20" viewBox="0 0 24 24">
+  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+</svg>`;
+
+async function renderAuth(session) {
+  const app = window._boardApp;
+
   if (session?.user) {
+    currentUser = session.user;
     const meta   = session.user.user_metadata ?? {};
     const name   = meta.full_name ?? meta.name ?? meta.user_name
                  ?? session.user.email?.split('@')[0] ?? '?';
@@ -1027,16 +1278,77 @@ function renderAuth(session) {
     avatarEl.innerHTML = avatar
       ? `<img src="${avatar}" alt="" style="width:100%;height:100%;border-radius:999px;object-fit:cover;">`
       : name.charAt(0).toUpperCase();
+
+    if (app) {
+      app.currentUser = currentUser;
+      app.scheduleSbSave  = scheduleSbSave;
+      app.sbCreateBoard   = sbCreateBoard;
+      app.sbDeleteBoard   = sbDeleteBoardFn;
+      app.sbUpdateBoardName = sbUpdateBoardName;
+    }
+
+    // Load boards from Supabase
+    try {
+      const client = await getClient();
+      let boards = await sbLoadBoards(client);
+
+      if (!boards?.length) {
+        // First login: create a default board in Supabase
+        const defBoard = app?.mkBoard?.() ?? {
+          id: crypto.randomUUID(), name: 'Board',
+          width: 1366, height: 768, panX: 0, panY: 0, notes: [], strokes: [],
+        };
+        await client.from('boards').insert({
+          id: defBoard.id, owner_id: session.user.id,
+          name: defBoard.name, width: defBoard.width, height: defBoard.height,
+        });
+        boards = [defBoard];
+      }
+
+      if (app) {
+        const prevId = app.state.activeBoardId;
+        const active = boards.find(b => b.id === prevId) || boards[0];
+        app.state.boards = boards;
+        app.state.activeBoardId = active.id;
+        app.loadBoardIntoState(active);
+        app.applyBoardSize(active.width, active.height);
+        app.renderBoardList();
+      }
+    } catch (err) {
+      console.error('Supabase board load failed:', err);
+      if (app) app.renderBoardList();
+    }
+
   } else {
+    currentUser = null;
     userRow.style.display  = 'none';
     guestRow.style.display = '';
     googleBtn.disabled = false;
-    googleBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>`;
+    googleBtn.innerHTML = GOOGLE_SVG;
+
+    if (app) {
+      app.currentUser       = null;
+      app.scheduleSbSave    = null;
+      app.sbCreateBoard     = null;
+      app.sbDeleteBoard     = null;
+      app.sbUpdateBoardName = null;
+
+      // Restore guest boards from localStorage
+      let raw = {};
+      try { raw = JSON.parse(localStorage.getItem('board-lite-v10') || '{}'); } catch {}
+      if (!raw.boards?.length) {
+        const b = { id: crypto.randomUUID(), name: 'Board',
+          width: raw.boardW || 1366, height: raw.boardH || 768,
+          panX: 0, panY: 0, notes: raw.notes || [], strokes: raw.strokes || [] };
+        raw.boards = [b]; raw.activeBoardId = b.id;
+      }
+      const active = raw.boards.find(b => b.id === raw.activeBoardId) || raw.boards[0];
+      app.state.boards = raw.boards;
+      app.state.activeBoardId = active.id;
+      app.loadBoardIntoState(active);
+      app.applyBoardSize(active.width, active.height);
+      app.renderBoardList();
+    }
   }
 }
 
@@ -1044,7 +1356,6 @@ function renderAuth(session) {
 googleBtn.addEventListener('click', async () => {
   googleBtn.disabled = true;
   googleBtn.innerHTML = '<span class="auth-spinner"></span>';
-
   try {
     const client     = await getClient();
     const redirectTo = window.location.href.split('?')[0].split('#')[0];
@@ -1053,29 +1364,24 @@ googleBtn.addEventListener('click', async () => {
       options: { redirectTo, skipBrowserRedirect: true },
     });
     if (error || !data?.url) throw error ?? new Error();
-
     const popup = window.open(
       data.url, 'sb-oauth',
       'width=520,height=640,popup=yes,left=' +
         Math.round(window.screenX + (window.outerWidth  - 520) / 2) +
         ',top='  + Math.round(window.screenY + (window.outerHeight - 640) / 2)
     );
-
     if (!popup) { window.location.href = data.url; return; }
-
     const iv = setInterval(async () => {
       if (!popup.closed) return;
       clearInterval(iv);
       const { data: { session } } = await (await getClient()).auth.getSession();
-      renderAuth(session);
+      await renderAuth(session);
     }, 600);
-
   } catch {
-    renderAuth(null);
+    await renderAuth(null);
   }
 });
 
-// ── Logout ────────────────────────────────────────────────
 logoutBtn.addEventListener('click', async () => {
   (await getClient()).auth.signOut();
 });
@@ -1085,17 +1391,11 @@ logoutBtn.addEventListener('click', async () => {
   try {
     const client = await getClient();
     const { data: { session } } = await client.auth.getSession();
-
-    // Siamo nel popup OAuth: Supabase ha già salvato la sessione → chiudi
-    if (window.opener && session) {
-      window.close();
-      return;
-    }
-
-    renderAuth(session);
-    client.auth.onAuthStateChange((_e, session) => renderAuth(session));
+    if (window.opener && session) { window.close(); return; }
+    await renderAuth(session);
+    client.auth.onAuthStateChange(async (_e, session) => renderAuth(session));
   } catch {
-    renderAuth(null);
+    await renderAuth(null);
   }
 })();
 </script>
