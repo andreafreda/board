@@ -66,6 +66,8 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 
 /* Board list in drawer */
 .d-sec{padding:.42rem 0;border-top:1px solid var(--border);}
+.d-sec-label{font-size:.68rem;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.05em;padding:.05rem .35rem .3rem;}
 .d-boards-hdr{display:flex;align-items:center;justify-content:flex-end;
   min-height:22px;margin-bottom:.3rem;}
 #newBoardBtn{width:26px;height:26px;border-radius:8px;font-size:.95rem;font-weight:700;
@@ -367,7 +369,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.1.6</div>
+<div class="version">v.1.1.7</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -405,6 +407,12 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
       <button id="newBoardBtn" type="button" title="New board">＋</button>
     </div>
     <div id="boardsList"></div>
+  </div>
+
+  <!-- ── Shared with me (visible only when user has shared boards) ── -->
+  <div class="d-sec" id="sharedSec" style="display:none;">
+    <div class="d-sec-label">Condivise con me</div>
+    <div id="sharedList"></div>
   </div>
 
   <!-- ── Members (visible only for owner of cooperative board) ── -->
@@ -724,13 +732,29 @@ function renderBoardList(){
     cooperative:{icon:'👥',title:'Cooperative',next:'private'},
   };
 
+  const sharedSec=$('sharedSec');
+  const sharedListEl=$('sharedList');
+  if(sharedListEl)sharedListEl.innerHTML='';
+
+  function mkbib(icon,cls,ttl,cb){
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='d-bib '+cls;btn.title=ttl;btn.textContent=icon;
+    btn.addEventListener('click',e=>{e.stopPropagation();cb(btn);});
+    return btn;
+  }
+
+  let sharedCount=0;
+  const ownedBoards=state.boards.filter(b=>{
+    if(!b.visibility)b.visibility='private';
+    return !b.ownerId||b.ownerId===(window._boardApp?.currentUser?.id);
+  });
+
   state.boards.forEach(b=>{
     if(!b.visibility)b.visibility='private';
     const isActive=b.id===state.activeBoardId;
     const vis=b.visibility||'private';
     const vc=VIS[vis]||VIS.private;
     const isOwner=!b.ownerId||b.ownerId===(window._boardApp?.currentUser?.id);
-    const isShared=!isOwner; // board belongs to another user
 
     const item=document.createElement('div');
     item.className='d-board'+(isActive?' active':'');
@@ -740,18 +764,16 @@ function renderBoardList(){
     const name=document.createElement('span');
     name.className='d-bname';name.textContent=b.name;name.title=b.name;
 
-    // Visibility badge — clickable (cycles) if owner, static if member
-    const visBtn=document.createElement('button');
-    visBtn.type='button';
-    visBtn.className='vis-btn'+(vis!=='private'?' pub':'');
-    visBtn.textContent=vc.icon;
     if(isOwner){
+      // Visibility badge — clickable, cycles through states
+      const visBtn=document.createElement('button');
+      visBtn.type='button';
+      visBtn.className='vis-btn'+(vis!=='private'?' pub':'');
+      visBtn.textContent=vc.icon;
       visBtn.title=vc.title+' — click to change';
       visBtn.addEventListener('click',e=>{
         e.stopPropagation();
         b.visibility=vc.next;
-        // If switching to cooperative and this isn't the active board,
-        // make it active (without closing drawer) so the members section appears
         if(vc.next==='cooperative'&&b.id!==state.activeBoardId){
           syncActiveBoard();
           state.activeBoardId=b.id;
@@ -760,8 +782,7 @@ function renderBoardList(){
         }
         save();
         window._boardApp?.sbUpdateVisibility?.(b.id,vc.next);
-        renderBoardList(); // handles renderMembersSection internally
-        // Presence: join/leave channel based on new visibility
+        renderBoardList();
         const app=window._boardApp;
         if(vc.next==='public'||vc.next==='cooperative'){
           app?.joinPresenceChannel?.(b.id);
@@ -769,50 +790,49 @@ function renderBoardList(){
           app?.leavePresenceChannel?.();
         }
       });
-    } else {
-      visBtn.title='Shared board ('+vis+')';
-      visBtn.style.pointerEvents='none';
-    }
 
-    const acts=document.createElement('div');acts.className='d-acts';
-    function mkbib(icon,cls,ttl,cb){
-      const btn=document.createElement('button');
-      btn.type='button';btn.className='d-bib '+cls;btn.title=ttl;btn.textContent=icon;
-      btn.addEventListener('click',e=>{e.stopPropagation();cb(btn);});
-      return btn;
-    }
-    if(isOwner){
+      const acts=document.createElement('div');acts.className='d-acts';
       acts.append(
         mkbib('✏️','','Rename',()=>startRenameBoard(b,name)),
         mkbib('⧉','','Duplicate',()=>dupBoard(b)),
-        ...(state.boards.length>1?[mkbib('✕','del','Delete',btn=>confirmDeleteBoard(b.id,btn))]:[])
+        ...(ownedBoards.length>1?[mkbib('✕','del','Delete',btn=>confirmDeleteBoard(b.id,btn))]:[])
       );
-    }
-    // shared boards: no actions (member can't rename/delete/dup owner's board)
 
-    item.append(dot,name,visBtn,acts);
-    listEl.appendChild(item);
+      item.append(dot,name,visBtn,acts);
+      listEl.appendChild(item);
 
-    // Share link row — shown for public + cooperative boards (owner only)
-    if(isOwner&&(vis==='public'||vis==='cooperative')){
-      const shareRow=document.createElement('div');
-      shareRow.className='d-share-row';
-      const copyBtn=document.createElement('button');
-      copyBtn.type='button';copyBtn.className='d-copy-btn';
-      copyBtn.title='Copy share link';copyBtn.innerHTML='🔗';
-      let ct=null;
-      copyBtn.addEventListener('click',e=>{
-        e.stopPropagation();
-        const link=`${location.origin}${location.pathname}?board=${b.id}`;
-        navigator.clipboard.writeText(link).then(()=>{
-          copyBtn.innerHTML='✓';copyBtn.classList.add('copied');
-          clearTimeout(ct);ct=setTimeout(()=>{copyBtn.innerHTML='🔗';copyBtn.classList.remove('copied');},2000);
-        }).catch(()=>prompt('Share link:',link));
-      });
-      shareRow.appendChild(copyBtn);
-      listEl.appendChild(shareRow);
+      // Share link row for public + cooperative
+      if(vis==='public'||vis==='cooperative'){
+        const shareRow=document.createElement('div');
+        shareRow.className='d-share-row';
+        const copyBtn=document.createElement('button');
+        copyBtn.type='button';copyBtn.className='d-copy-btn';
+        copyBtn.title='Copy share link';copyBtn.innerHTML='🔗';
+        let ct=null;
+        copyBtn.addEventListener('click',e=>{
+          e.stopPropagation();
+          const link=`${location.origin}${location.pathname}?board=${b.id}`;
+          navigator.clipboard.writeText(link).then(()=>{
+            copyBtn.innerHTML='✓';copyBtn.classList.add('copied');
+            clearTimeout(ct);ct=setTimeout(()=>{copyBtn.innerHTML='🔗';copyBtn.classList.remove('copied');},2000);
+          }).catch(()=>prompt('Share link:',link));
+        });
+        shareRow.appendChild(copyBtn);
+        listEl.appendChild(shareRow);
+      }
+    } else {
+      // Shared board — goes in "Condivise con me" section
+      sharedCount++;
+      const icon=document.createElement('span');
+      icon.className='vis-btn pub';icon.textContent='👥';
+      icon.title='Condivisa da qualcun altro';
+      icon.style.pointerEvents='none';
+      item.append(dot,name,icon);
+      if(sharedListEl)sharedListEl.appendChild(item);
     }
   });
+
+  if(sharedSec)sharedSec.style.display=sharedCount>0?'':'none';
 
   // Members panel for cooperative board owner
   renderMembersSection(null);
