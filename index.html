@@ -322,7 +322,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.0.6</div>
+<div class="version">v.1.0.7</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -594,7 +594,7 @@ function exitViewMode(){
 }
 
 $('viewExitBtn')?.addEventListener('click',()=>{
-  // Navigate to app root (strips ?board= param)
+  window._boardApp?.stopVisibilityWatcher?.();
   window.location.href=location.origin+location.pathname;
 });
 
@@ -1393,6 +1393,7 @@ window._boardApp={
   renderMembersSection,switchBoard,
   enterViewMode,exitViewMode,
   get isViewMode(){return isViewMode;},
+  stopVisibilityWatcher:null, // set by module after startVisibilityWatcher
   currentUser:null,
   scheduleSbSave:null,sbCreateBoard:null,sbDeleteBoard:null,
   sbUpdateBoardName:null,sbUpdateVisibility:null,
@@ -1563,10 +1564,47 @@ async function loadPublicBoard(boardId) {
     };
 
     if (app?.enterViewMode) app.enterViewMode(board);
+    // Start watcher: if owner revokes public access while viewer has board open,
+    // kick them out within 12 s rather than showing stale data indefinitely.
+    startVisibilityWatcher(boardId);
+    if (app) app.stopVisibilityWatcher = stopVisibilityWatcher;
   } catch (err) {
     console.warn('loadPublicBoard:', err.message);
     history.replaceState(null, '', location.pathname);
   }
+}
+
+// ── Visibility watcher (view mode only) ──────────────────
+let _visWatcher = null;
+
+function startVisibilityWatcher(boardId) {
+  stopVisibilityWatcher();
+  _visWatcher = setInterval(async () => {
+    const app = window._boardApp;
+    // Auto-stop if we left view mode some other way
+    if (!app?.isViewMode) { stopVisibilityWatcher(); return; }
+    try {
+      const client = await getClient();
+      // Anon SELECT: succeeds only if visibility is still 'public' (RLS 002).
+      // If it returns null the board was set to private → evict immediately.
+      const { data } = await client
+        .from('boards').select('visibility').eq('id', boardId).maybeSingle();
+      if (!data || data.visibility !== 'public') {
+        stopVisibilityWatcher();
+        // Wipe the view and exit
+        app.exitViewMode();
+        app.state.notes   = [];
+        app.state.strokes = [];
+        app.renderNotes?.();
+        app.redrawBoard?.();
+        history.replaceState(null, '', location.pathname);
+      }
+    } catch { /* network error — keep trying */ }
+  }, 12000); // check every 12 s
+}
+
+function stopVisibilityWatcher() {
+  if (_visWatcher) { clearInterval(_visWatcher); _visWatcher = null; }
 }
 
 let sbSaveTimer = null;
