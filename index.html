@@ -235,6 +235,39 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .vis-btn.pub{opacity:1;color:var(--primary);}
 .vis-btn:hover{opacity:1!important;background:color-mix(in srgb,var(--border) 65%,transparent);}
 
+/* Members section */
+.d-member-item{display:flex;align-items:center;gap:7px;
+  padding:.24rem .35rem;border-radius:8px;transition:background .1s;}
+.d-member-item:hover{background:color-mix(in srgb,var(--border) 35%,transparent);}
+.d-member-item.pending{opacity:.52;}
+.d-member-avatar{width:24px;height:24px;border-radius:999px;
+  background:var(--primary);color:#fff;font-size:.65rem;font-weight:700;
+  display:grid;place-items:center;flex-shrink:0;}
+.d-member-email{flex:1;font-size:.74rem;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.d-member-role{font-size:.7rem;padding:.08rem .28rem;border-radius:5px;
+  flex-shrink:0;cursor:pointer;
+  border:1px solid color-mix(in srgb,var(--border) 80%,transparent);
+  background:color-mix(in srgb,var(--border) 40%,transparent);
+  transition:background .1s,color .1s,border-color .1s;}
+.d-member-role:hover{background:color-mix(in srgb,var(--primary) 12%,transparent);
+  border-color:color-mix(in srgb,var(--primary) 28%,transparent);}
+.d-member-role.editor{color:var(--primary);}
+.d-member-role.viewer{color:var(--muted);}
+.d-member-loading{font-size:.75rem;color:var(--muted);padding:.25rem .35rem;opacity:.55;}
+.d-invite-row{display:flex;gap:5px;margin-top:.4rem;}
+.d-invite-inp{flex:1;min-height:30px;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface);
+  padding:0 8px;font-size:.78rem;color:var(--text);outline:none;
+  transition:border-color .15s;}
+.d-invite-inp:focus{border-color:var(--primary);}
+.d-invite-btn{width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  border:1px solid color-mix(in srgb,var(--primary) 30%,transparent);
+  background:color-mix(in srgb,var(--primary) 8%,transparent);
+  color:var(--primary);font-size:1rem;font-weight:700;
+  display:grid;place-items:center;transition:background .12s;}
+.d-invite-btn:hover{background:color-mix(in srgb,var(--primary) 18%,transparent);}
+
 /* Share link row */
 .d-share-row{display:flex;gap:6px;padding:.1rem .35rem .2rem;}
 .d-copy-btn{flex:1;min-height:30px;border-radius:9px;border:1px solid var(--border);
@@ -289,7 +322,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.0.5</div>
+<div class="version">v.1.0.6</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -325,6 +358,16 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
       <button id="newBoardBtn" type="button" title="New board">＋</button>
     </div>
     <div id="boardsList"></div>
+  </div>
+
+  <!-- ── Members (visible only for owner of cooperative board) ── -->
+  <div class="d-sec" id="membersSec" style="display:none;">
+    <div id="membersList"></div>
+    <div class="d-invite-row">
+      <input class="d-invite-inp" id="inviteEmail" type="email"
+             title="Add member by email" autocomplete="off" spellcheck="false"/>
+      <button class="d-invite-btn" id="inviteBtn" type="button" title="Add member">＋</button>
+    </div>
   </div>
 
   <!-- ── Board size ── -->
@@ -619,10 +662,20 @@ function renderBoardList(){
     return;
   }
 
+  // Visibility config: icon, label, next state in cycle
+  const VIS={
+    private:{icon:'🔒',title:'Private',next:'public'},
+    public: {icon:'🌐',title:'Public',next:'cooperative'},
+    cooperative:{icon:'👥',title:'Cooperative',next:'private'},
+  };
+
   state.boards.forEach(b=>{
     if(!b.visibility)b.visibility='private';
     const isActive=b.id===state.activeBoardId;
-    const isPublic=b.visibility==='public';
+    const vis=b.visibility||'private';
+    const vc=VIS[vis]||VIS.private;
+    const isOwner=!b.ownerId||b.ownerId===(window._boardApp?.currentUser?.id);
+    const isShared=!isOwner; // board belongs to another user
 
     const item=document.createElement('div');
     item.className='d-board'+(isActive?' active':'');
@@ -632,58 +685,74 @@ function renderBoardList(){
     const name=document.createElement('span');
     name.className='d-bname';name.textContent=b.name;name.title=b.name;
 
-    // Visibility toggle badge
+    // Visibility badge — clickable (cycles) if owner, static if member
     const visBtn=document.createElement('button');
     visBtn.type='button';
-    visBtn.className='vis-btn'+(isPublic?' pub':'');
-    visBtn.textContent=isPublic?'🌐':'🔒';
-    visBtn.title=isPublic?'Public — click to make private':'Private — click to share';
-    visBtn.addEventListener('click',e=>{
-      e.stopPropagation();
-      const newVis=isPublic?'private':'public';
-      b.visibility=newVis;
-      save();
-      window._boardApp?.sbUpdateVisibility?.(b.id,newVis);
-      renderBoardList();
-    });
+    visBtn.className='vis-btn'+(vis!=='private'?' pub':'');
+    visBtn.textContent=vc.icon;
+    if(isOwner){
+      visBtn.title=vc.title+' — click to change';
+      visBtn.addEventListener('click',e=>{
+        e.stopPropagation();
+        b.visibility=vc.next;
+        save();
+        window._boardApp?.sbUpdateVisibility?.(b.id,vc.next);
+        renderBoardList();
+        renderMembersSection(null);
+      });
+    } else {
+      visBtn.title='Shared board ('+vis+')';
+      visBtn.style.pointerEvents='none';
+    }
 
     const acts=document.createElement('div');acts.className='d-acts';
-    function mkbib(icon,cls,title,cb){
+    function mkbib(icon,cls,ttl,cb){
       const btn=document.createElement('button');
-      btn.type='button';btn.className='d-bib '+cls;btn.title=title;btn.textContent=icon;
+      btn.type='button';btn.className='d-bib '+cls;btn.title=ttl;btn.textContent=icon;
       btn.addEventListener('click',e=>{e.stopPropagation();cb(btn);});
       return btn;
     }
-    acts.append(
-      mkbib('✏️','','Rename',()=>startRenameBoard(b,name)),
-      mkbib('⧉','','Duplicate',()=>dupBoard(b)),
-      ...(state.boards.length>1?[mkbib('✕','del','Delete',btn=>confirmDeleteBoard(b.id,btn))]:[])
-    );
+    if(isOwner){
+      acts.append(
+        mkbib('✏️','','Rename',()=>startRenameBoard(b,name)),
+        mkbib('⧉','','Duplicate',()=>dupBoard(b)),
+        ...(state.boards.length>1?[mkbib('✕','del','Delete',btn=>confirmDeleteBoard(b.id,btn))]:[])
+      );
+    }
+    // shared boards: no actions (member can't rename/delete/dup owner's board)
+
     item.append(dot,name,visBtn,acts);
     listEl.appendChild(item);
 
-    // Share row: show copy-link button when board is public
-    if(isPublic){
+    // Share link row — shown for public + cooperative boards (owner only)
+    if(isOwner&&(vis==='public'||vis==='cooperative')){
       const shareRow=document.createElement('div');
       shareRow.className='d-share-row';
       const copyBtn=document.createElement('button');
       copyBtn.type='button';copyBtn.className='d-copy-btn';
-      copyBtn.title='Copy share link';
-      copyBtn.innerHTML='🔗';
-      let copyTimer=null;
+      copyBtn.title='Copy share link';copyBtn.innerHTML='🔗';
+      let ct=null;
       copyBtn.addEventListener('click',e=>{
         e.stopPropagation();
         const link=`${location.origin}${location.pathname}?board=${b.id}`;
         navigator.clipboard.writeText(link).then(()=>{
           copyBtn.innerHTML='✓';copyBtn.classList.add('copied');
-          clearTimeout(copyTimer);
-          copyTimer=setTimeout(()=>{copyBtn.innerHTML='🔗';copyBtn.classList.remove('copied');},2000);
+          clearTimeout(ct);ct=setTimeout(()=>{copyBtn.innerHTML='🔗';copyBtn.classList.remove('copied');},2000);
         }).catch(()=>prompt('Share link:',link));
       });
       shareRow.appendChild(copyBtn);
       listEl.appendChild(shareRow);
     }
   });
+
+  // Members panel for cooperative board owner
+  renderMembersSection(null);
+  if(window._boardApp?.currentUser){
+    const ab=state.boards.find(b=>b.id===state.activeBoardId);
+    if(ab?.visibility==='cooperative'&&(!ab.ownerId||ab.ownerId===window._boardApp?.currentUser?.id)){
+      window._boardApp?.refreshMembers?.(ab.id);
+    }
+  }
 }
 
 function confirmDeleteBoard(boardId,anchorEl){
@@ -764,6 +833,63 @@ function execDeleteBoard(boardId){
 }
 
 $('newBoardBtn')?.addEventListener('click',e=>{e.stopPropagation();newBoard();});
+
+// ── MEMBERS SECTION ───────────────────────────────────────
+function renderMembersSection(members){
+  const sec=$('membersSec');if(!sec)return;
+  const isUser=!!(window._boardApp?.currentUser);
+  const ab=state.boards.find(b=>b.id===state.activeBoardId);
+  const isCoop=ab?.visibility==='cooperative';
+  const isOwner=isUser&&(!ab?.ownerId||ab.ownerId===window._boardApp?.currentUser?.id);
+  sec.style.display=(isUser&&isCoop&&isOwner)?'':'none';
+  if(!isUser||!isCoop||!isOwner)return;
+  const listEl=$('membersList');if(!listEl)return;
+  listEl.innerHTML='';
+  if(!members){
+    listEl.innerHTML='<div class="d-member-loading">···</div>';return;
+  }
+  if(!members.length){return;} // empty — only invite row shows
+  members.forEach(m=>{
+    const item=document.createElement('div');
+    item.className='d-member-item'+(m.status==='pending'?' pending':'');
+    const av=document.createElement('div');av.className='d-member-avatar';
+    av.textContent=(m.email||'?')[0].toUpperCase();
+    av.title=m.email+(m.status==='pending'?' (pending)':'');
+    const email=document.createElement('span');email.className='d-member-email';
+    email.textContent=m.email;email.title=email.textContent;
+    const role=document.createElement('button');role.type='button';
+    role.className='d-member-role '+m.role;
+    role.textContent=m.role==='editor'?'✏':'👁';
+    role.title='Role: '+m.role+' — click to toggle';
+    role.addEventListener('click',async e=>{
+      e.stopPropagation();
+      const newRole=m.role==='editor'?'viewer':'editor';
+      await window._boardApp?.sbUpdateMemberRole?.(m.id,newRole);
+      window._boardApp?.refreshMembers?.(ab.id);
+    });
+    const rm=document.createElement('button');rm.type='button';
+    rm.className='d-bib del';rm.textContent='✕';rm.title='Remove member';
+    rm.addEventListener('click',async e=>{
+      e.stopPropagation();
+      await window._boardApp?.sbRemoveMember?.(m.id);
+      window._boardApp?.refreshMembers?.(ab.id);
+    });
+    item.append(av,email,role,rm);listEl.appendChild(item);
+  });
+}
+
+$('inviteBtn')?.addEventListener('click',async e=>{
+  e.stopPropagation();
+  const inp=$('inviteEmail');
+  const email=(inp?.value||'').trim().toLowerCase();
+  if(!email||!email.includes('@'))return;
+  const ab=state.boards.find(b=>b.id===state.activeBoardId);if(!ab)return;
+  inp.disabled=true;
+  await window._boardApp?.sbAddMember?.(ab.id,email,'editor');
+  inp.value='';inp.disabled=false;
+  window._boardApp?.refreshMembers?.(ab.id);
+});
+$('inviteEmail')?.addEventListener('keydown',e=>{if(e.key==='Enter')$('inviteBtn')?.click();});
 
 // ── PRESETS ──────────────────────────────────────────────
 function renderPresets(){
@@ -1264,11 +1390,14 @@ window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampP
 window._boardApp={
   state,mkBoard,syncActiveBoard,loadBoardIntoState,
   applyBoardSize,renderBoardList,renderNotes,redrawBoard,
+  renderMembersSection,switchBoard,
   enterViewMode,exitViewMode,
   get isViewMode(){return isViewMode;},
   currentUser:null,
   scheduleSbSave:null,sbCreateBoard:null,sbDeleteBoard:null,
   sbUpdateBoardName:null,sbUpdateVisibility:null,
+  sbAddMember:null,sbRemoveMember:null,sbUpdateMemberRole:null,
+  refreshMembers:null,
 };
 
 })();
@@ -1310,6 +1439,8 @@ async function sbLoadBoards(client) {
       panX: 0, panY: 0,
       notes: (notes || []).map(r => r.data),
       strokes: strokes?.length ? (strokes[0].data || []) : [],
+      ownerId: b.owner_id,
+      visibility: b.visibility || 'private',
     };
   }));
   return loaded;
@@ -1337,6 +1468,55 @@ async function sbDeleteBoardFn(boardId) {
   await client.from('boards').delete().eq('id', boardId);
 }
 
+// ── Member ops ────────────────────────────────────────────
+async function sbAddMember(boardId, email, role = 'editor') {
+  if (!currentUser) return;
+  const client = await getClient();
+  await client.from('board_members').upsert({
+    board_id: boardId, owner_id: currentUser.id,
+    email, role, status: 'pending',
+  }, { onConflict: 'board_id,email', ignoreDuplicates: false });
+}
+
+async function sbRemoveMember(memberId) {
+  if (!currentUser) return;
+  const client = await getClient();
+  await client.from('board_members').delete().eq('id', memberId);
+}
+
+async function sbUpdateMemberRole(memberId, role) {
+  if (!currentUser) return;
+  const client = await getClient();
+  await client.from('board_members').update({ role }).eq('id', memberId);
+}
+
+async function sbLoadMembers(boardId) {
+  const client = await getClient();
+  const { data } = await client.from('board_members')
+    .select('id,email,role,status,user_id')
+    .eq('board_id', boardId)
+    .order('created_at');
+  return data || [];
+}
+
+// Called by IIFE bridge when members need refreshing
+async function refreshMembers(boardId) {
+  const app = window._boardApp;
+  if (!boardId || !app) return;
+  const members = await sbLoadMembers(boardId);
+  app.renderMembersSection(members);
+}
+
+// After login: activate any pending invites matching this user's email
+async function claimPendingMemberships(client, user) {
+  try {
+    await client.from('board_members')
+      .update({ user_id: user.id, status: 'active' })
+      .eq('email', user.email)
+      .eq('status', 'pending');
+  } catch { /* non-critical */ }
+}
+
 async function updateBoardVisibility(boardId, vis) {
   if (!currentUser) return;
   const client = await getClient();
@@ -1352,8 +1532,21 @@ async function loadPublicBoard(boardId) {
     const client = await getClient();
     const { data: meta, error } = await client
       .from('boards').select('*').eq('id', boardId).single();
-    if (error || !meta) throw new Error('Board not found');
-    if (meta.visibility !== 'public') throw new Error('Board is private');
+
+    // RLS denies access when board is private or doesn't exist:
+    // anon users can only SELECT boards WHERE visibility='public' (policy 002).
+    // So if meta is null here, the board was set back to private → deny silently.
+    if (error || !meta) {
+      // Strip ?board= from URL so the user doesn't keep a dead link in their address bar
+      history.replaceState(null, '', location.pathname);
+      return; // show normal guest app
+    }
+    // Extra defence: should never reach here for private boards due to RLS,
+    // but guards against future policy changes or unexpected states.
+    if (meta.visibility !== 'public') {
+      history.replaceState(null, '', location.pathname);
+      return;
+    }
 
     const [{ data: notes }, { data: strokes }] = await Promise.all([
       client.from('notes').select('id,data').eq('board_id', boardId),
@@ -1372,7 +1565,7 @@ async function loadPublicBoard(boardId) {
     if (app?.enterViewMode) app.enterViewMode(board);
   } catch (err) {
     console.warn('loadPublicBoard:', err.message);
-    // Fall through — app shows normally (board not found or private)
+    history.replaceState(null, '', location.pathname);
   }
 }
 
@@ -1385,11 +1578,17 @@ async function doSbSave() {
   const b = app.state.boards.find(bd => bd.id === app.state.activeBoardId);
   if (!b) return;
   const ts = new Date().toISOString();
+  const isOwnerBoard = !b.ownerId || b.ownerId === currentUser.id;
 
-  await client.from('boards').upsert({
-    id: b.id, owner_id: currentUser.id,
-    name: b.name, width: b.width, height: b.height, updated_at: ts,
-  });
+  // Only the board owner can update board metadata
+  if (isOwnerBoard) {
+    await client.from('boards').upsert({
+      id: b.id, owner_id: currentUser.id,
+      name: b.name, width: b.width, height: b.height,
+      visibility: b.visibility || 'private',
+      updated_at: ts,
+    });
+  }
 
   if (b.notes.length > 0) {
     await client.from('notes').upsert(
@@ -1446,11 +1645,16 @@ async function renderAuth(session) {
       app.sbDeleteBoard       = sbDeleteBoardFn;
       app.sbUpdateBoardName   = sbUpdateBoardName;
       app.sbUpdateVisibility  = updateBoardVisibility;
+      app.sbAddMember         = sbAddMember;
+      app.sbRemoveMember      = sbRemoveMember;
+      app.sbUpdateMemberRole  = sbUpdateMemberRole;
+      app.refreshMembers      = refreshMembers;
     }
 
     // Load boards from Supabase, preserving any offline guest work first
     try {
       const client = await getClient();
+      await claimPendingMemberships(client, currentUser);
 
       // ── Step 1: upsert the current guest board if it has content ──
       // This handles BOTH first-login and returning-user-with-offline-edits scenarios.
@@ -1533,6 +1737,10 @@ async function renderAuth(session) {
       app.sbDeleteBoard      = null;
       app.sbUpdateBoardName  = null;
       app.sbUpdateVisibility = null;
+      app.sbAddMember        = null;
+      app.sbRemoveMember     = null;
+      app.sbUpdateMemberRole = null;
+      app.refreshMembers     = null;
 
       // Restore guest boards from localStorage
       let raw = {};
@@ -1589,16 +1797,30 @@ logoutBtn.addEventListener('click', async () => {
 
 // ── Bootstrap ─────────────────────────────────────────────
 (async () => {
-  // View mode: ?board=<uuid> in URL — load public board read-only, skip normal auth flow
   const urlBoard = new URLSearchParams(location.search).get('board');
-  if (urlBoard) {
-    await loadPublicBoard(urlBoard);
-    return; // don't mount editing UI
-  }
 
-  // Normal app flow
   try {
     const client = await getClient();
+
+    if (urlBoard) {
+      // Peek at visibility before deciding the routing strategy.
+      // RLS: anon can read public boards, so a private/cooperative board returns null here.
+      const { data: meta } = await client.from('boards')
+        .select('id,visibility').eq('id', urlBoard).maybeSingle();
+
+      if (meta?.visibility === 'public') {
+        // Public board → view mode (no auth setup needed)
+        await loadPublicBoard(urlBoard);
+        return;
+      }
+      // Cooperative board OR board no longer accessible (private/deleted):
+      // run normal auth flow. If user is an active member, the board will appear
+      // in their board list via sbLoadBoards (RLS grants them SELECT).
+      // If not a member or board is private → strip the param and show normal app.
+      if (!meta) history.replaceState(null, '', location.pathname);
+    }
+
+    // Normal auth flow
     const { data: { session } } = await client.auth.getSession();
     if (window.opener && session) { window.close(); return; }
     await renderAuth(session);
