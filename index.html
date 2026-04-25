@@ -2276,10 +2276,8 @@ async function renderAuth(session) {
     googleBtn.innerHTML = GOOGLE_SVG;
 
     if (app) {
-      // Save current logged-in state to localStorage before switching to guest
-      app.syncActiveBoard?.();
-      try { localStorage.setItem('board-lite-v10', JSON.stringify(app.state)); } catch {}
-
+      // On logout: clear bridge functions first, then wipe cloud state.
+      // We do NOT carry cloud boards to the guest session (privacy).
       app.currentUser        = null;
       app.scheduleSbSave     = null;
       app.sbCreateBoard      = null;
@@ -2300,20 +2298,17 @@ async function renderAuth(session) {
       app.broadcastStrokeEnd   = null;
       await leavePresenceChannel();
 
-      // Restore guest boards from localStorage
-      let raw = {};
-      try { raw = JSON.parse(localStorage.getItem('board-lite-v10') || '{}'); } catch {}
-      if (!raw.boards?.length) {
-        const b = { id: crypto.randomUUID(), name: 'Board',
-          width: raw.boardW || 1366, height: raw.boardH || 768,
-          panX: 0, panY: 0, notes: raw.notes || [], strokes: raw.strokes || [] };
-        raw.boards = [b]; raw.activeBoardId = b.id;
-      }
-      const active = raw.boards.find(b => b.id === raw.activeBoardId) || raw.boards[0];
-      app.state.boards = raw.boards;
-      app.state.activeBoardId = active.id;
-      app.loadBoardIntoState(active);
-      app.applyBoardSize(active.width, active.height);
+      // Start fresh: a blank guest board — cloud data stays in Supabase only.
+      const freshBoard = app.mkBoard?.() ?? {
+        id: crypto.randomUUID(), name: 'Board',
+        width: 1366, height: 768, panX: 0, panY: 0, notes: [], strokes: [],
+      };
+      const freshState = { boards: [freshBoard], activeBoardId: freshBoard.id };
+      try { localStorage.setItem('board-lite-v10', JSON.stringify(freshState)); } catch {}
+      app.state.boards = [freshBoard];
+      app.state.activeBoardId = freshBoard.id;
+      app.loadBoardIntoState(freshBoard);
+      app.applyBoardSize(freshBoard.width, freshBoard.height);
       app.renderBoardList();
     }
   }
