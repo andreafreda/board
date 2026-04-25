@@ -1669,11 +1669,17 @@ async function loadPublicBoard(boardId) {
     // Watcher: evict viewer if board is set back to private
     startVisibilityWatcher(boardId);
     if (app) app.stopVisibilityWatcher = stopVisibilityWatcher;
-    // Presence: join as anonymous viewer
-    await joinPresenceChannel(boardId);
   } catch (err) {
     console.warn('loadPublicBoard:', err.message);
     history.replaceState(null, '', location.pathname);
+    return;
+  }
+  // Presence is non-critical — failure must NOT strip the ?board= URL
+  // or hide the board. Join after the critical path completes.
+  try {
+    await joinPresenceChannel(boardId);
+  } catch (err) {
+    console.warn('joinPresenceChannel (non-critical):', err.message);
   }
 }
 
