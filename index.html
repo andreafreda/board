@@ -367,7 +367,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.1.5</div>
+<div class="version">v.1.1.6</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -2289,13 +2289,21 @@ async function renderAuth(session) {
         const preferredId = savedGuestBoardId || lastActiveBoardId || null;
         const active = boards.find(b => b.id === preferredId) || boards[0];
         app.state.boards = boards;
-        app.state.activeBoardId = active.id;
-        app.loadBoardIntoState(active);
-        app.applyBoardSize(active.width, active.height);
+        // If the URL had ?board=uuid (e.g. invite link), switch directly to that
+        // board if it's now accessible (claimPendingMemberships may have just activated it)
+        const urlBoardId = new URLSearchParams(location.search).get('board');
+        const urlBoard = urlBoardId ? boards.find(b => b.id === urlBoardId) : null;
+        const chosen = urlBoard || active;
+        // Clean up the URL param now that we've handled it
+        if (urlBoardId) history.replaceState(null, '', location.pathname);
+
+        app.state.activeBoardId = chosen.id;
+        app.loadBoardIntoState(chosen);
+        app.applyBoardSize(chosen.width, chosen.height);
         app.renderBoardList();
         // Join presence channel if board is shared
-        if (active.visibility === 'public' || active.visibility === 'cooperative') {
-          joinPresenceChannel(active.id);
+        if (chosen.visibility === 'public' || chosen.visibility === 'cooperative') {
+          joinPresenceChannel(chosen.id);
         }
       }
     } catch (err) {
@@ -2401,11 +2409,11 @@ logoutBtn.addEventListener('click', async () => {
         await loadPublicBoard(urlBoard);
         return;
       }
-      // Cooperative board OR board no longer accessible (private/deleted):
-      // run normal auth flow. If user is an active member, the board will appear
-      // in their board list via sbLoadBoards (RLS grants them SELECT).
-      // If not a member or board is private → strip the param and show normal app.
-      if (!meta) history.replaceState(null, '', location.pathname);
+      // Cooperative board OR truly inaccessible (private/deleted).
+      // Cannot distinguish the two as anon — cooperative boards are RLS-invisible
+      // to unauthenticated users just like private ones.
+      // Do NOT strip the URL: if the user logs in and is an active/pending member,
+      // renderAuth will switch to this board after claimPendingMemberships runs.
     }
 
     // Normal auth flow
