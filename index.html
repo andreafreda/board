@@ -367,7 +367,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.1.3</div>
+<div class="version">v.1.1.4</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -960,9 +960,23 @@ $('inviteBtn')?.addEventListener('click',async e=>{
   const email=(inp?.value||'').trim().toLowerCase();
   if(!email||!email.includes('@'))return;
   const ab=state.boards.find(b=>b.id===state.activeBoardId);if(!ab)return;
-  inp.disabled=true;
-  await window._boardApp?.sbAddMember?.(ab.id,email,'editor');
-  inp.value='';inp.disabled=false;
+  const btn=$('inviteBtn');
+  inp.disabled=true;if(btn)btn.disabled=true;
+  try{
+    const err=await window._boardApp?.sbAddMember?.(ab.id,email,'editor');
+    if(err){
+      inp.style.borderColor='var(--danger,#e05c5c)';
+      setTimeout(()=>{inp.style.borderColor='';},1800);
+    } else {
+      inp.value='';
+    }
+  } catch(ex){
+    console.error('sbAddMember:',ex);
+    inp.style.borderColor='var(--danger,#e05c5c)';
+    setTimeout(()=>{inp.style.borderColor='';},1800);
+  } finally {
+    inp.disabled=false;if(btn)btn.disabled=false;
+  }
   window._boardApp?.refreshMembers?.(ab.id);
 });
 $('inviteEmail')?.addEventListener('keydown',e=>{if(e.key==='Enter')$('inviteBtn')?.click();});
@@ -1583,12 +1597,14 @@ async function sbDeleteBoardFn(boardId) {
 
 // ── Member ops ────────────────────────────────────────────
 async function sbAddMember(boardId, email, role = 'editor') {
-  if (!currentUser) return;
+  if (!currentUser) return null;
   const client = await getClient();
-  await client.from('board_members').upsert({
+  const { error } = await client.from('board_members').upsert({
     board_id: boardId, owner_id: currentUser.id,
     email, role, status: 'pending',
   }, { onConflict: 'board_id,email', ignoreDuplicates: false });
+  if (error) console.error('sbAddMember:', error.message);
+  return error ?? null; // null = success, error object = failure
 }
 
 async function sbRemoveMember(memberId) {
