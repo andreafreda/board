@@ -367,7 +367,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.1.4</div>
+<div class="version">v.1.1.5</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -1638,12 +1638,13 @@ async function refreshMembers(boardId) {
 
 // After login: activate any pending invites matching this user's email
 async function claimPendingMemberships(client, user) {
-  try {
-    await client.from('board_members')
-      .update({ user_id: user.id, status: 'active' })
-      .eq('email', user.email)
-      .eq('status', 'pending');
-  } catch { /* non-critical */ }
+  const { data, error } = await client.from('board_members')
+    .update({ user_id: user.id, status: 'active' })
+    .eq('email', user.email)
+    .eq('status', 'pending')
+    .select('id');
+  if (error) console.warn('claimPendingMemberships failed:', error.message);
+  else if (data?.length) console.log(`claimPendingMemberships: activated ${data.length} invite(s)`);
 }
 
 async function updateBoardVisibility(boardId, vis) {
