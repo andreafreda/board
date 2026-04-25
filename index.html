@@ -367,7 +367,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.1.2</div>
+<div class="version">v.1.1.3</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -750,10 +750,17 @@ function renderBoardList(){
       visBtn.addEventListener('click',e=>{
         e.stopPropagation();
         b.visibility=vc.next;
+        // If switching to cooperative and this isn't the active board,
+        // make it active (without closing drawer) so the members section appears
+        if(vc.next==='cooperative'&&b.id!==state.activeBoardId){
+          syncActiveBoard();
+          state.activeBoardId=b.id;
+          loadBoardIntoState(b);
+          applyBoardSize(b.width,b.height);
+        }
         save();
         window._boardApp?.sbUpdateVisibility?.(b.id,vc.next);
-        renderBoardList();
-        renderMembersSection(null);
+        renderBoardList(); // handles renderMembersSection internally
         // Presence: join/leave channel based on new visibility
         const app=window._boardApp;
         if(vc.next==='public'||vc.next==='cooperative'){
@@ -2259,8 +2266,10 @@ async function renderAuth(session) {
       }
 
       if (app) {
-        // Prefer the just-saved guest board so offline work is immediately visible
-        const preferredId = savedGuestBoardId || app.state.activeBoardId;
+        // Prefer: 1) just-saved guest board (offline work), 2) last board from prefs, 3) boards[0]
+        let lastActiveBoardId = null;
+        try { lastActiveBoardId = JSON.parse(localStorage.getItem('board-lite-v10-prefs') || '{}').activeBoardId ?? null; } catch {}
+        const preferredId = savedGuestBoardId || lastActiveBoardId || null;
         const active = boards.find(b => b.id === preferredId) || boards[0];
         app.state.boards = boards;
         app.state.activeBoardId = active.id;
