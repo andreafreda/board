@@ -267,7 +267,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .d-member-item{display:flex;align-items:center;gap:7px;
   padding:.24rem .35rem;border-radius:8px;transition:background .1s;}
 .d-member-item:hover{background:color-mix(in srgb,var(--border) 35%,transparent);}
-.d-member-item.pending{opacity:.52;}
 .d-member-avatar{width:24px;height:24px;border-radius:999px;
   background:var(--primary);color:#fff;font-size:.65rem;font-weight:700;
   display:grid;place-items:center;flex-shrink:0;}
@@ -369,7 +368,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.1.7</div>
+<div class="version">v.1.1.8</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -947,10 +946,10 @@ function renderMembersSection(members){
   if(!members.length){return;} // empty — only invite row shows
   members.forEach(m=>{
     const item=document.createElement('div');
-    item.className='d-member-item'+(m.status==='pending'?' pending':'');
+    item.className='d-member-item';
     const av=document.createElement('div');av.className='d-member-avatar';
     av.textContent=(m.email||'?')[0].toUpperCase();
-    av.title=m.email+(m.status==='pending'?' (pending)':'');
+    av.title=m.email;
     const email=document.createElement('span');email.className='d-member-email';
     email.textContent=m.email;email.title=email.textContent;
     const role=document.createElement('button');role.type='button';
@@ -1621,10 +1620,10 @@ async function sbAddMember(boardId, email, role = 'editor') {
   const client = await getClient();
   const { error } = await client.from('board_members').upsert({
     board_id: boardId, owner_id: currentUser.id,
-    email, role, status: 'pending',
+    email, role,
   }, { onConflict: 'board_id,email', ignoreDuplicates: false });
   if (error) console.error('sbAddMember:', error.message);
-  return error ?? null; // null = success, error object = failure
+  return error ?? null;
 }
 
 async function sbRemoveMember(memberId) {
@@ -1657,15 +1656,8 @@ async function refreshMembers(boardId) {
 }
 
 // After login: activate any pending invites matching this user's email
-async function claimPendingMemberships(client, user) {
-  const { data, error } = await client.from('board_members')
-    .update({ user_id: user.id, status: 'active' })
-    .eq('email', user.email)
-    .eq('status', 'pending')
-    .select('id');
-  if (error) console.warn('claimPendingMemberships failed:', error.message);
-  else if (data?.length) console.log(`claimPendingMemberships: activated ${data.length} invite(s)`);
-}
+// claimPendingMemberships removed: access is now email-based (auth.email()),
+// no pending/active status needed. Board is visible immediately on login.
 
 async function updateBoardVisibility(boardId, vis) {
   if (!currentUser) return;
@@ -2252,7 +2244,6 @@ async function renderAuth(session) {
     // Load boards from Supabase, preserving any offline guest work first
     try {
       const client = await getClient();
-      await claimPendingMemberships(client, currentUser);
 
       // ── Step 1: upsert the current guest board if it has content ──
       // This handles BOTH first-login and returning-user-with-offline-edits scenarios.
@@ -2432,8 +2423,8 @@ logoutBtn.addEventListener('click', async () => {
       // Cooperative board OR truly inaccessible (private/deleted).
       // Cannot distinguish the two as anon — cooperative boards are RLS-invisible
       // to unauthenticated users just like private ones.
-      // Do NOT strip the URL: if the user logs in and is an active/pending member,
-      // renderAuth will switch to this board after claimPendingMemberships runs.
+      // Do NOT strip the URL: if the user logs in and is a member,
+      // renderAuth will switch to this board after loading boards.
     }
 
     // Normal auth flow
