@@ -107,6 +107,22 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   font-size:.58rem;color:var(--muted);opacity:.55;
   user-select:none;pointer-events:none;padding:0 2px;}
 
+/* Presence avatars */
+.presence-stack{position:fixed;top:10px;right:10px;z-index:39;
+  display:flex;align-items:center;gap:0;flex-direction:row-reverse;}
+.presence-stack.hidden{display:none;}
+.pav{width:34px;height:34px;border-radius:999px;
+  border:2.5px solid var(--bg);
+  display:grid;place-items:center;
+  font-size:.75rem;font-weight:700;color:#fff;
+  cursor:default;transition:transform .15s,z-index 0s;
+  margin-left:-8px;position:relative;}
+.pav:hover{transform:translateY(-3px) scale(1.08);z-index:5;}
+.pav:first-child{margin-left:0;}
+.pav-more{background:color-mix(in srgb,var(--muted) 70%,var(--surface));
+  color:var(--text);font-size:.65rem;font-weight:700;}
+/* tooltip via title — native browser handles it */
+
 /* Corner */
 .corner{position:fixed;top:10px;right:10px;z-index:40;display:flex;gap:6px;}
 .cbtn{width:44px;height:44px;border-radius:14px;border:1px solid var(--border);
@@ -322,7 +338,9 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.0.7</div>
+<div class="version">v.1.0.8</div>
+
+<div class="presence-stack hidden" id="presenceStack"></div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -699,6 +717,13 @@ function renderBoardList(){
         window._boardApp?.sbUpdateVisibility?.(b.id,vc.next);
         renderBoardList();
         renderMembersSection(null);
+        // Presence: join/leave channel based on new visibility
+        const app=window._boardApp;
+        if(vc.next==='public'||vc.next==='cooperative'){
+          app?.joinPresenceChannel?.(b.id);
+        } else {
+          app?.leavePresenceChannel?.();
+        }
       });
     } else {
       visBtn.title='Shared board ('+vis+')';
@@ -790,6 +815,13 @@ function switchBoard(id){
   renderBoardList();
   openDrawer(false);
   save();
+  // Presence: leave old channel, join new if board is shared
+  const app=window._boardApp;
+  if(b.visibility==='public'||b.visibility==='cooperative'){
+    app?.joinPresenceChannel?.(b.id);
+  } else {
+    app?.leavePresenceChannel?.();
+  }
 }
 
 function newBoard(){
@@ -1393,7 +1425,9 @@ window._boardApp={
   renderMembersSection,switchBoard,
   enterViewMode,exitViewMode,
   get isViewMode(){return isViewMode;},
-  stopVisibilityWatcher:null, // set by module after startVisibilityWatcher
+  stopVisibilityWatcher:null,
+  joinPresenceChannel:null,
+  leavePresenceChannel:null,
   currentUser:null,
   scheduleSbSave:null,sbCreateBoard:null,sbDeleteBoard:null,
   sbUpdateBoardName:null,sbUpdateVisibility:null,
@@ -1564,10 +1598,11 @@ async function loadPublicBoard(boardId) {
     };
 
     if (app?.enterViewMode) app.enterViewMode(board);
-    // Start watcher: if owner revokes public access while viewer has board open,
-    // kick them out within 12 s rather than showing stale data indefinitely.
+    // Watcher: evict viewer if board is set back to private
     startVisibilityWatcher(boardId);
     if (app) app.stopVisibilityWatcher = stopVisibilityWatcher;
+    // Presence: join as anonymous viewer
+    await joinPresenceChannel(boardId);
   } catch (err) {
     console.warn('loadPublicBoard:', err.message);
     history.replaceState(null, '', location.pathname);
@@ -1606,6 +1641,121 @@ function startVisibilityWatcher(boardId) {
 function stopVisibilityWatcher() {
   if (_visWatcher) { clearInterval(_visWatcher); _visWatcher = null; }
 }
+
+// ── Presence (F5) ─────────────────────────────────────────
+// 10 distinct pastel-ish colours, assigned deterministically by userId hash
+const PRESENCE_COLORS = [
+  '#e05c5c','#e07a3a','#c8a020','#4fa84f','#3a9e8a',
+  '#3a7ec8','#6a5bd4','#b04db0','#c04070','#5a8f6a',
+];
+function presenceColor(userId) {
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) h = (Math.imul(31, h) + userId.charCodeAt(i)) | 0;
+  return PRESENCE_COLORS[Math.abs(h) % PRESENCE_COLORS.length];
+}
+function presenceInitials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+}
+
+let _presenceChannel = null;
+
+function renderPresenceStack(peers) {
+  const stack = document.getElementById('presenceStack');
+  if (!stack) return;
+  stack.innerHTML = '';
+  if (!peers.length) { stack.classList.add('hidden'); return; }
+  stack.classList.remove('hidden');
+
+  const MAX = 5;
+  const visible = peers.slice(0, MAX);
+  const extra   = peers.length - MAX;
+
+  // "+N" overflow pill (rendered first → appears rightmost due to row-reverse)
+  if (extra > 0) {
+    const pill = document.createElement('div');
+    pill.className = 'pav pav-more';
+    pill.textContent = '+' + extra;
+    pill.title = extra + ' more online';
+    stack.appendChild(pill);
+  }
+  // Individual avatars (reversed so first peer is rightmost)
+  [...visible].reverse().forEach(p => {
+    const av = document.createElement('div');
+    av.className = 'pav';
+    av.style.background = presenceColor(p.userId);
+    av.textContent = presenceInitials(p.name);
+    av.title = p.name || p.email || 'Anonymous';
+    stack.appendChild(av);
+  });
+}
+
+async function joinPresenceChannel(boardId) {
+  await leavePresenceChannel();
+  if (!boardId) return;
+
+  const client = await getClient();
+  const app    = window._boardApp;
+  const user   = currentUser;
+
+  // Build local user payload (name + color for others to display)
+  const meta = user?.user_metadata ?? {};
+  const name = meta.full_name ?? meta.name ?? user?.email?.split('@')[0] ?? 'Guest';
+
+  _presenceChannel = client.channel('presence:board:' + boardId, {
+    config: { presence: { key: user?.id ?? 'anon-' + Math.random().toString(36).slice(2) } },
+  });
+
+  _presenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      const state = _presenceChannel.presenceState();
+      // Flatten: each key → first payload in the array
+      const peers = Object.entries(state)
+        .map(([, payloads]) => payloads[0])
+        .filter(p => p && p.userId !== user?.id); // exclude self
+      renderPresenceStack(peers);
+    })
+    .subscribe(async status => {
+      if (status === 'SUBSCRIBED') {
+        await _presenceChannel.track({
+          userId: user?.id ?? null,
+          name,
+          email: user?.email ?? null,
+          boardId,
+          joinedAt: Date.now(),
+        });
+      }
+    });
+}
+
+async function leavePresenceChannel() {
+  if (_presenceChannel) {
+    try {
+      await _presenceChannel.untrack();
+      const client = await getClient();
+      await client.removeChannel(_presenceChannel);
+    } catch { /* ignore */ }
+    _presenceChannel = null;
+  }
+  renderPresenceStack([]); // clear avatars
+}
+
+// Clean up on page unload / tab hidden
+window.addEventListener('beforeunload', () => leavePresenceChannel());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) leavePresenceChannel();
+  else {
+    // Rejoin when tab becomes visible again
+    const app = window._boardApp;
+    const ab  = app?.state?.boards?.find(b => b.id === app.state.activeBoardId);
+    if (ab && (ab.visibility === 'public' || ab.visibility === 'cooperative')) {
+      joinPresenceChannel(ab.id);
+    }
+  }
+});
 
 let sbSaveTimer = null;
 async function doSbSave() {
@@ -1683,10 +1833,12 @@ async function renderAuth(session) {
       app.sbDeleteBoard       = sbDeleteBoardFn;
       app.sbUpdateBoardName   = sbUpdateBoardName;
       app.sbUpdateVisibility  = updateBoardVisibility;
-      app.sbAddMember         = sbAddMember;
-      app.sbRemoveMember      = sbRemoveMember;
-      app.sbUpdateMemberRole  = sbUpdateMemberRole;
-      app.refreshMembers      = refreshMembers;
+      app.sbAddMember          = sbAddMember;
+      app.sbRemoveMember       = sbRemoveMember;
+      app.sbUpdateMemberRole   = sbUpdateMemberRole;
+      app.refreshMembers       = refreshMembers;
+      app.joinPresenceChannel  = joinPresenceChannel;
+      app.leavePresenceChannel = leavePresenceChannel;
     }
 
     // Load boards from Supabase, preserving any offline guest work first
@@ -1751,6 +1903,10 @@ async function renderAuth(session) {
         app.loadBoardIntoState(active);
         app.applyBoardSize(active.width, active.height);
         app.renderBoardList();
+        // Join presence channel if board is shared
+        if (active.visibility === 'public' || active.visibility === 'cooperative') {
+          joinPresenceChannel(active.id);
+        }
       }
     } catch (err) {
       console.error('Supabase board load failed:', err);
@@ -1775,10 +1931,13 @@ async function renderAuth(session) {
       app.sbDeleteBoard      = null;
       app.sbUpdateBoardName  = null;
       app.sbUpdateVisibility = null;
-      app.sbAddMember        = null;
-      app.sbRemoveMember     = null;
-      app.sbUpdateMemberRole = null;
-      app.refreshMembers     = null;
+      app.sbAddMember          = null;
+      app.sbRemoveMember       = null;
+      app.sbUpdateMemberRole   = null;
+      app.refreshMembers       = null;
+      app.joinPresenceChannel  = null;
+      app.leavePresenceChannel = null;
+      await leavePresenceChannel();
 
       // Restore guest boards from localStorage
       let raw = {};
