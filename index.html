@@ -222,6 +222,18 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .notes-layer{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
 .note{pointer-events:auto;}
 
+/* Cursors layer (remote users) */
+#cursorsLayer{position:absolute;inset:0;pointer-events:none;z-index:5;overflow:visible;}
+.remote-cursor{position:absolute;pointer-events:none;
+  transition:left .06s linear,top .06s linear;
+  display:flex;flex-direction:column;align-items:flex-start;gap:1px;
+  opacity:1;transition:left .06s linear,top .06s linear,opacity .3s;}
+.remote-cursor.fading{opacity:0;}
+.cursor-label{font-size:.62rem;font-weight:700;color:#fff;
+  padding:.08rem .28rem;border-radius:4px;white-space:nowrap;
+  margin-top:1px;margin-left:10px;
+  box-shadow:0 1px 3px rgba(0,0,0,.25);}
+
 /* Draw layer */
 .draw-layer{position:absolute;inset:0;width:100%;height:100%;
   pointer-events:none;z-index:1;background:transparent;}
@@ -331,6 +343,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div id="board">
     <canvas class="draw-layer" id="sketch"></canvas>
     <div class="notes-layer" id="notesLayer"></div>
+    <div id="cursorsLayer"></div>
   </div>
 </div>
 
@@ -338,7 +351,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.0.8</div>
+<div class="version">v.1.0.9</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -1693,6 +1706,69 @@ function renderPresenceStack(peers) {
   });
 }
 
+// ── Cursor layer (F6) ────────────────────────────────────
+const _remoteCursors = new Map(); // userId → { el, timer }
+
+function _cursorSvg(color) {
+  return `<svg width="14" height="18" viewBox="0 0 14 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M1 1 L1 13.5 L4.5 10 L7 16.5 L9 15.5 L6.5 9 L11 9 Z"
+          fill="${color}" stroke="rgba(255,255,255,.85)" stroke-width="1.2" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+function upsertRemoteCursor(userId, x, y, name, color) {
+  const layer = document.getElementById('cursorsLayer');
+  if (!layer) return;
+  let entry = _remoteCursors.get(userId);
+  if (!entry) {
+    const el = document.createElement('div');
+    el.className = 'remote-cursor';
+    el.innerHTML = _cursorSvg(color) +
+      `<span class="cursor-label" style="background:${color}">${name}</span>`;
+    layer.appendChild(el);
+    entry = { el, timer: null };
+    _remoteCursors.set(userId, entry);
+  }
+  entry.el.style.left = x + 'px';
+  entry.el.style.top  = y + 'px';
+  entry.el.classList.remove('fading');
+  // Auto-fade after 3 s of no movement
+  clearTimeout(entry.timer);
+  entry.timer = setTimeout(() => entry.el.classList.add('fading'), 3000);
+}
+
+function removeRemoteCursor(userId) {
+  const entry = _remoteCursors.get(userId);
+  if (entry) { entry.el.remove(); clearTimeout(entry.timer); }
+  _remoteCursors.delete(userId);
+}
+
+function clearAllCursors() {
+  _remoteCursors.forEach((_, id) => removeRemoteCursor(id));
+}
+
+// Throttled cursor sender — max 30 fps
+let _lastCursorSend = 0;
+const _CURSOR_MS = 33;
+// Stable anon key so guest cursors stay consistent within a session
+const _anonKey = 'anon-' + Math.random().toString(36).slice(2);
+
+function sendCursor(clientX, clientY) {
+  if (!_presenceChannel || document.hidden) return;
+  const now = Date.now();
+  if (now - _lastCursorSend < _CURSOR_MS) return;
+  _lastCursorSend = now;
+  const app = window._boardApp;
+  if (!app) return;
+  const bx = Math.round(clientX - (app.state.panX || 0));
+  const by = Math.round(clientY - (app.state.panY || 0));
+  _presenceChannel.send({ type: 'broadcast', event: 'cursor',
+    payload: { userId: currentUser?.id ?? _anonKey, x: bx, y: by } });
+}
+
+// Global pointermove → send cursor (only active when channel is open)
+document.addEventListener('pointermove', e => sendCursor(e.clientX, e.clientY), { passive: true });
+
 async function joinPresenceChannel(boardId) {
   await leavePresenceChannel();
   if (!boardId) return;
@@ -1701,32 +1777,41 @@ async function joinPresenceChannel(boardId) {
   const app    = window._boardApp;
   const user   = currentUser;
 
-  // Build local user payload (name + color for others to display)
-  const meta = user?.user_metadata ?? {};
-  const name = meta.full_name ?? meta.name ?? user?.email?.split('@')[0] ?? 'Guest';
+  const meta  = user?.user_metadata ?? {};
+  const name  = meta.full_name ?? meta.name ?? user?.email?.split('@')[0] ?? 'Guest';
+  const myKey = user?.id ?? _anonKey;
+  const color = presenceColor(myKey);
 
-  _presenceChannel = client.channel('presence:board:' + boardId, {
-    config: { presence: { key: user?.id ?? 'anon-' + Math.random().toString(36).slice(2) } },
+  _presenceChannel = client.channel('board:' + boardId, {
+    config: { presence: { key: myKey } },
   });
 
   _presenceChannel
+    // ── Presence sync → avatar stack ──────────────────────
     .on('presence', { event: 'sync' }, () => {
-      const state = _presenceChannel.presenceState();
-      // Flatten: each key → first payload in the array
-      const peers = Object.entries(state)
+      const ps = _presenceChannel.presenceState();
+      const peers = Object.entries(ps)
         .map(([, payloads]) => payloads[0])
-        .filter(p => p && p.userId !== user?.id); // exclude self
+        .filter(p => p && p.userId !== myKey);
       renderPresenceStack(peers);
+      // Remove cursors for users no longer present
+      const liveIds = new Set(peers.map(p => p.userId).filter(Boolean));
+      _remoteCursors.forEach((_, uid) => { if (!liveIds.has(uid)) removeRemoteCursor(uid); });
+    })
+    // ── Cursor broadcast → remote cursor layer ────────────
+    .on('broadcast', { event: 'cursor' }, ({ payload }) => {
+      if (!payload || payload.userId === myKey) return;
+      // Find peer name + color from presence state
+      const ps = _presenceChannel.presenceState();
+      const peerPayload = Object.values(ps).flat()
+        .find(p => p.userId === payload.userId);
+      const peerName  = peerPayload?.name  ?? 'Guest';
+      const peerColor = presenceColor(payload.userId);
+      upsertRemoteCursor(payload.userId, payload.x, payload.y, peerName, peerColor);
     })
     .subscribe(async status => {
       if (status === 'SUBSCRIBED') {
-        await _presenceChannel.track({
-          userId: user?.id ?? null,
-          name,
-          email: user?.email ?? null,
-          boardId,
-          joinedAt: Date.now(),
-        });
+        await _presenceChannel.track({ userId: myKey, name, color, boardId, joinedAt: Date.now() });
       }
     });
 }
@@ -1740,7 +1825,8 @@ async function leavePresenceChannel() {
     } catch { /* ignore */ }
     _presenceChannel = null;
   }
-  renderPresenceStack([]); // clear avatars
+  renderPresenceStack([]);
+  clearAllCursors();
 }
 
 // Clean up on page unload / tab hidden
