@@ -124,7 +124,8 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   border-radius:20px;box-shadow:var(--shadow);padding:.6rem;
   display:none;backdrop-filter:blur(18px);
   max-height:calc(100dvh - 80px);overflow-y:auto;}
-.drawer.open{display:block;}
+.drawer.open{display:block;animation:drawerIn .17s cubic-bezier(.22,.5,.36,1);}
+@keyframes drawerIn{from{opacity:0;transform:translateY(-7px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .dsec{padding:.38rem 0;border-bottom:1px solid var(--border);display:grid;gap:.4rem;}
 .dsec:last-child{border-bottom:0;}
 .drow{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
@@ -255,7 +256,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.0.3</div>
+<div class="version">v.1.0.4</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -1287,45 +1288,62 @@ async function renderAuth(session) {
       app.sbUpdateBoardName = sbUpdateBoardName;
     }
 
-    // Load boards from Supabase
+    // Load boards from Supabase, preserving any offline guest work first
     try {
       const client = await getClient();
-      let boards = await sbLoadBoards(client);
 
-      if (!boards?.length) {
-        // First login: carry over the current guest board content
-        app?.syncActiveBoard?.();
-        const guestBoard = app?.state?.boards?.find(b => b.id === app?.state?.activeBoardId);
-        const defBoard = {
-          id: crypto.randomUUID(),
-          name: guestBoard?.name || 'Board',
-          width: guestBoard?.width || 1366,
-          height: guestBoard?.height || 768,
-          panX: 0, panY: 0,
-          notes: guestBoard?.notes || [],
-          strokes: guestBoard?.strokes || [],
-        };
-        const ts = new Date().toISOString();
-        await client.from('boards').insert({
-          id: defBoard.id, owner_id: session.user.id,
-          name: defBoard.name, width: defBoard.width, height: defBoard.height,
-        });
-        if (defBoard.notes.length) {
-          await client.from('notes').insert(
-            defBoard.notes.map(n => ({ id: n.id, board_id: defBoard.id, owner_id: session.user.id, data: n, updated_at: ts }))
-          );
-        }
-        if (defBoard.strokes.length) {
-          await client.from('strokes').insert({
-            id: defBoard.id, board_id: defBoard.id, owner_id: session.user.id, data: defBoard.strokes, updated_at: ts,
+      // ── Step 1: upsert the current guest board if it has content ──
+      // This handles BOTH first-login and returning-user-with-offline-edits scenarios.
+      // We always push local content to Supabase before loading, so offline edits
+      // are never lost regardless of whether the user has existing cloud boards.
+      let savedGuestBoardId = null;
+      if (app) {
+        app.syncActiveBoard?.();
+        const gb = app.state.boards?.find(b => b.id === app.state.activeBoardId)
+                || app.state.boards?.[0];
+        const hasContent = gb && ((gb.notes?.length > 0) || (gb.strokes?.length > 0));
+        if (hasContent) {
+          savedGuestBoardId = gb.id;
+          const ts = new Date().toISOString();
+          // upsert: insert if new board, update if returning user's board
+          await client.from('boards').upsert({
+            id: gb.id, owner_id: session.user.id,
+            name: gb.name || 'Board', width: gb.width || 1366, height: gb.height || 768,
+            updated_at: ts,
+          });
+          if (gb.notes.length) {
+            await client.from('notes').upsert(
+              gb.notes.map(n => ({
+                id: n.id, board_id: gb.id, owner_id: session.user.id, data: n, updated_at: ts,
+              }))
+            );
+          }
+          await client.from('strokes').upsert({
+            id: gb.id, board_id: gb.id, owner_id: session.user.id,
+            data: gb.strokes || [], updated_at: ts,
           });
         }
-        boards = [defBoard];
+      }
+
+      // ── Step 2: load all boards (now includes the just-saved guest board) ──
+      let boards = await sbLoadBoards(client);
+      if (!boards?.length) {
+        // Empty account with empty guest board: create a fresh default board
+        const d = app?.mkBoard?.() ?? {
+          id: crypto.randomUUID(), name: 'Board',
+          width: 1366, height: 768, panX: 0, panY: 0, notes: [], strokes: [],
+        };
+        await client.from('boards').insert({
+          id: d.id, owner_id: session.user.id,
+          name: d.name, width: d.width, height: d.height,
+        });
+        boards = [d];
       }
 
       if (app) {
-        const prevId = app.state.activeBoardId;
-        const active = boards.find(b => b.id === prevId) || boards[0];
+        // Prefer the just-saved guest board so offline work is immediately visible
+        const preferredId = savedGuestBoardId || app.state.activeBoardId;
+        const active = boards.find(b => b.id === preferredId) || boards[0];
         app.state.boards = boards;
         app.state.activeBoardId = active.id;
         app.loadBoardIntoState(active);
