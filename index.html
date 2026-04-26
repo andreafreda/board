@@ -304,7 +304,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.3.4</div>
+<div class="version">v.1.3.5</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -1487,6 +1487,13 @@ async function renderAuth(session) {
       app.sbUpdateVisibility  = updateBoardVisibility;
     }
 
+    // ⚠ View mode guard: if we're rendering a shared board read-only, never
+    // touch board state from here. onAuthStateChange fires INITIAL_SESSION
+    // shortly after registering the listener, which would otherwise reload
+    // the user's own active board and overwrite the shared board content
+    // (the banner would still show the shared board name though — confusing).
+    if (app?.isViewMode) return;
+
     // Load boards from Supabase, preserving any offline guest work first
     try {
       const client = await getClient();
@@ -1579,6 +1586,10 @@ async function renderAuth(session) {
     googleBtn.innerHTML = GOOGLE_SVG;
 
     if (app) {
+      // ⚠ View mode guard (see explanation in the logged-in branch above):
+      // skip board state mutation when rendering a shared board read-only.
+      if (app.isViewMode) return;
+
       // Save current logged-in state to localStorage before switching to guest
       app.syncActiveBoard?.();
       try { localStorage.setItem('board-lite-v10', JSON.stringify(app.state)); } catch {}
@@ -1655,7 +1666,15 @@ logoutBtn.addEventListener('click', async () => {
     const { data: { session } } = await client.auth.getSession();
     if (window.opener && session) { window.close(); return; }
     await renderAuth(session);
-    client.auth.onAuthStateChange(async (_e, sess) => renderAuth(sess));
+    // Only react to actual sign-in / sign-out events. Skip INITIAL_SESSION
+    // (already handled above) and TOKEN_REFRESHED / USER_UPDATED which don't
+    // change auth identity — re-rendering on those would needlessly thrash
+    // the board view, especially while a shared board is in view mode.
+    client.auth.onAuthStateChange(async (event, sess) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        await renderAuth(sess);
+      }
+    });
   } catch {
     await renderAuth(null);
   }
