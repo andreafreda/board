@@ -66,8 +66,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 
 /* Board list in drawer */
 .d-sec{padding:.42rem 0;border-top:1px solid var(--border);}
-.d-sec-label{font-size:.68rem;font-weight:600;color:var(--muted);
-  text-transform:uppercase;letter-spacing:.05em;padding:.05rem .35rem .3rem;}
 .d-boards-hdr{display:flex;align-items:center;justify-content:flex-end;
   min-height:22px;margin-bottom:.3rem;}
 #newBoardBtn{width:26px;height:26px;border-radius:8px;font-size:.95rem;font-weight:700;
@@ -108,22 +106,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .version{position:fixed;top:62px;left:10px;z-index:29;
   font-size:.58rem;color:var(--muted);opacity:.55;
   user-select:none;pointer-events:none;padding:0 2px;}
-
-/* Presence avatars */
-.presence-stack{position:fixed;top:10px;right:10px;z-index:39;
-  display:flex;align-items:center;gap:0;flex-direction:row-reverse;}
-.presence-stack.hidden{display:none;}
-.pav{width:34px;height:34px;border-radius:999px;
-  border:2.5px solid var(--bg);
-  display:grid;place-items:center;
-  font-size:.75rem;font-weight:700;color:#fff;
-  cursor:default;transition:transform .15s,z-index 0s;
-  margin-left:-8px;position:relative;}
-.pav:hover{transform:translateY(-3px) scale(1.08);z-index:5;}
-.pav:first-child{margin-left:0;}
-.pav-more{background:color-mix(in srgb,var(--muted) 70%,var(--surface));
-  color:var(--text);font-size:.65rem;font-weight:700;}
-/* tooltip via title — native browser handles it */
 
 /* Corner */
 .corner{position:fixed;top:10px;right:10px;z-index:40;display:flex;gap:6px;}
@@ -222,17 +204,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 
 /* Notes layer */
 .notes-layer{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
-
-/* Cursors layer (remote users) */
-#cursorsLayer{position:absolute;inset:0;pointer-events:none;z-index:5;overflow:visible;}
-.remote-cursor{position:absolute;pointer-events:none;
-  display:flex;flex-direction:column;align-items:flex-start;gap:1px;
-  opacity:1;transition:left .06s linear,top .06s linear,opacity .3s;}
-.remote-cursor.fading{opacity:0;}
-.cursor-label{font-size:.62rem;font-weight:700;color:#fff;
-  padding:.08rem .28rem;border-radius:4px;white-space:nowrap;
-  margin-top:1px;margin-left:10px;
-  box-shadow:0 1px 3px rgba(0,0,0,.25);}
+.note{pointer-events:auto;}
 
 /* Draw layer */
 .draw-layer{position:absolute;inset:0;width:100%;height:100%;
@@ -263,38 +235,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .vis-btn.pub{opacity:1;color:var(--primary);}
 .vis-btn:hover{opacity:1!important;background:color-mix(in srgb,var(--border) 65%,transparent);}
 
-/* Members section */
-.d-member-item{display:flex;align-items:center;gap:7px;
-  padding:.24rem .35rem;border-radius:8px;transition:background .1s;}
-.d-member-item:hover{background:color-mix(in srgb,var(--border) 35%,transparent);}
-.d-member-avatar{width:24px;height:24px;border-radius:999px;
-  background:var(--primary);color:#fff;font-size:.65rem;font-weight:700;
-  display:grid;place-items:center;flex-shrink:0;}
-.d-member-email{flex:1;font-size:.74rem;color:var(--muted);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.d-member-role{font-size:.7rem;padding:.08rem .28rem;border-radius:5px;
-  flex-shrink:0;cursor:pointer;
-  border:1px solid color-mix(in srgb,var(--border) 80%,transparent);
-  background:color-mix(in srgb,var(--border) 40%,transparent);
-  transition:background .1s,color .1s,border-color .1s;}
-.d-member-role:hover{background:color-mix(in srgb,var(--primary) 12%,transparent);
-  border-color:color-mix(in srgb,var(--primary) 28%,transparent);}
-.d-member-role.editor{color:var(--primary);}
-.d-member-role.viewer{color:var(--muted);}
-.d-member-loading{font-size:.75rem;color:var(--muted);padding:.25rem .35rem;opacity:.55;}
-.d-invite-row{display:flex;gap:5px;margin-top:.4rem;}
-.d-invite-inp{flex:1;min-height:30px;border-radius:8px;
-  border:1px solid var(--border);background:var(--surface);
-  padding:0 8px;font-size:.78rem;color:var(--text);outline:none;
-  transition:border-color .15s;}
-.d-invite-inp:focus{border-color:var(--primary);}
-.d-invite-btn{width:30px;height:30px;border-radius:8px;flex-shrink:0;
-  border:1px solid color-mix(in srgb,var(--primary) 30%,transparent);
-  background:color-mix(in srgb,var(--primary) 8%,transparent);
-  color:var(--primary);font-size:1rem;font-weight:700;
-  display:grid;place-items:center;transition:background .12s;}
-.d-invite-btn:hover{background:color-mix(in srgb,var(--primary) 18%,transparent);}
-
 /* Share link row */
 .d-share-row{display:flex;gap:6px;padding:.1rem .35rem .2rem;}
 .d-copy-btn{flex:1;min-height:30px;border-radius:9px;border:1px solid var(--border);
@@ -306,7 +246,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .d-copy-btn.copied{color:var(--primary);border-color:color-mix(in srgb,var(--primary) 40%,transparent);}
 
 /* Note */
-.note{pointer-events:auto;position:absolute;border-radius:15px 15px 18px 15px;
+.note{position:absolute;border-radius:15px 15px 18px 15px;
   box-shadow:0 10px 22px rgba(0,0,0,.13);border:1px solid rgba(0,0,0,.08);
   padding:1.1rem .75rem .6rem;display:flex;flex-direction:column;
   transform:rotate(var(--rot,0deg));min-width:120px;min-height:100px;}
@@ -334,24 +274,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   pointer-events:none;border-radius:0 0 inherit inherit;z-index:4;}
 .note-canvas.draw-on{pointer-events:auto;cursor:crosshair;}
 .note-canvas.eraser-on{pointer-events:auto;cursor:cell;}
-
-/* Sync status badge */
-.sync-badge{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);
-  z-index:30;font-size:.63rem;padding:.15rem .5rem;border-radius:999px;
-  display:flex;align-items:center;gap:4px;pointer-events:none;
-  background:var(--surface);border:1px solid var(--border);
-  box-shadow:var(--ssoft);opacity:0;transition:opacity .4s;}
-.sync-badge.show{opacity:1;}
-.sync-dot{width:6px;height:6px;border-radius:999px;flex-shrink:0;}
-.sync-badge.saved  .sync-dot{background:#4fa84f;}
-.sync-badge.saving .sync-dot{background:#c8a020;}
-.sync-badge.offline .sync-dot{background:#e05c5c;}
-.sync-toast{position:fixed;bottom:54px;left:50%;transform:translateX(-50%);
-  z-index:55;font-size:.78rem;font-weight:600;
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:12px;padding:.4rem .85rem;box-shadow:var(--shadow);
-  pointer-events:none;opacity:0;transition:opacity .3s;}
-.sync-toast.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -360,7 +282,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div id="board">
     <canvas class="draw-layer" id="sketch"></canvas>
     <div class="notes-layer" id="notesLayer"></div>
-    <div id="cursorsLayer"></div>
   </div>
 </div>
 
@@ -368,9 +289,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.2.3</div>
-
-<div class="presence-stack hidden" id="presenceStack"></div>
+<div class="version">v.1.0.5</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -406,22 +325,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
       <button id="newBoardBtn" type="button" title="New board">＋</button>
     </div>
     <div id="boardsList"></div>
-  </div>
-
-  <!-- ── Shared with me (visible only when user has shared boards) ── -->
-  <div class="d-sec" id="sharedSec" style="display:none;">
-    <div class="d-sec-label">Condivise con me</div>
-    <div id="sharedList"></div>
-  </div>
-
-  <!-- ── Members (visible only for owner of cooperative board) ── -->
-  <div class="d-sec" id="membersSec" style="display:none;">
-    <div id="membersList"></div>
-    <div class="d-invite-row">
-      <input class="d-invite-inp" id="inviteEmail" type="email"
-             title="Add member by email" autocomplete="off" spellcheck="false"/>
-      <button class="d-invite-btn" id="inviteBtn" type="button" title="Add member">＋</button>
-    </div>
   </div>
 
   <!-- ── Board size ── -->
@@ -497,9 +400,6 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 
 <button class="fab-fs" id="fullBtn" type="button">⛶</button>
 <div class="pan-ind" id="panInd"></div>
-
-<div class="sync-badge" id="syncBadge"><div class="sync-dot"></div><span id="syncLabel">Saved</span></div>
-<div class="sync-toast" id="syncToast"></div>
 
 <div class="view-banner" id="viewBanner">
   <span style="opacity:.55;font-size:.9rem;">👁</span>
@@ -648,15 +548,10 @@ function exitViewMode(){
   document.querySelector('.corner').style.cssText='';
   $('viewBanner')?.classList.remove('on');
   sketch.style.pointerEvents='';
-  // Restore interactivity on all note sub-elements
-  notesLayer.querySelectorAll('textarea').forEach(t=>{t.readOnly=false;t.style.pointerEvents='';});
-  notesLayer.querySelectorAll('.note-canvas').forEach(nc=>{nc.style.pointerEvents='';});
-  notesLayer.querySelectorAll('.note-head').forEach(h=>{h.style.pointerEvents='';});
-  notesLayer.querySelectorAll('.resize-handle').forEach(r=>{r.style.pointerEvents='';});
 }
 
 $('viewExitBtn')?.addEventListener('click',()=>{
-  window._boardApp?.stopVisibilityWatcher?.();
+  // Navigate to app root (strips ?board= param)
   window.location.href=location.origin+location.pathname;
 });
 
@@ -724,36 +619,10 @@ function renderBoardList(){
     return;
   }
 
-  // Visibility config: icon, label, next state in cycle
-  const VIS={
-    private:{icon:'🔒',title:'Private',next:'public'},
-    public: {icon:'🌐',title:'Public',next:'cooperative'},
-    cooperative:{icon:'👥',title:'Cooperative',next:'private'},
-  };
-
-  const sharedSec=$('sharedSec');
-  const sharedListEl=$('sharedList');
-  if(sharedListEl)sharedListEl.innerHTML='';
-
-  function mkbib(icon,cls,ttl,cb){
-    const btn=document.createElement('button');
-    btn.type='button';btn.className='d-bib '+cls;btn.title=ttl;btn.textContent=icon;
-    btn.addEventListener('click',e=>{e.stopPropagation();cb(btn);});
-    return btn;
-  }
-
-  let sharedCount=0;
-  const ownedBoards=state.boards.filter(b=>{
-    if(!b.visibility)b.visibility='private';
-    return !b.ownerId||b.ownerId===(window._boardApp?.currentUser?.id);
-  });
-
   state.boards.forEach(b=>{
     if(!b.visibility)b.visibility='private';
     const isActive=b.id===state.activeBoardId;
-    const vis=b.visibility||'private';
-    const vc=VIS[vis]||VIS.private;
-    const isOwner=!b.ownerId||b.ownerId===(window._boardApp?.currentUser?.id);
+    const isPublic=b.visibility==='public';
 
     const item=document.createElement('div');
     item.className='d-board'+(isActive?' active':'');
@@ -763,84 +632,58 @@ function renderBoardList(){
     const name=document.createElement('span');
     name.className='d-bname';name.textContent=b.name;name.title=b.name;
 
-    if(isOwner){
-      // Visibility badge — clickable, cycles through states
-      const visBtn=document.createElement('button');
-      visBtn.type='button';
-      visBtn.className='vis-btn'+(vis!=='private'?' pub':'');
-      visBtn.textContent=vc.icon;
-      visBtn.title=vc.title+' — click to change';
-      visBtn.addEventListener('click',e=>{
+    // Visibility toggle badge
+    const visBtn=document.createElement('button');
+    visBtn.type='button';
+    visBtn.className='vis-btn'+(isPublic?' pub':'');
+    visBtn.textContent=isPublic?'🌐':'🔒';
+    visBtn.title=isPublic?'Public — click to make private':'Private — click to share';
+    visBtn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const newVis=isPublic?'private':'public';
+      b.visibility=newVis;
+      save();
+      window._boardApp?.sbUpdateVisibility?.(b.id,newVis);
+      renderBoardList();
+    });
+
+    const acts=document.createElement('div');acts.className='d-acts';
+    function mkbib(icon,cls,title,cb){
+      const btn=document.createElement('button');
+      btn.type='button';btn.className='d-bib '+cls;btn.title=title;btn.textContent=icon;
+      btn.addEventListener('click',e=>{e.stopPropagation();cb(btn);});
+      return btn;
+    }
+    acts.append(
+      mkbib('✏️','','Rename',()=>startRenameBoard(b,name)),
+      mkbib('⧉','','Duplicate',()=>dupBoard(b)),
+      ...(state.boards.length>1?[mkbib('✕','del','Delete',btn=>confirmDeleteBoard(b.id,btn))]:[])
+    );
+    item.append(dot,name,visBtn,acts);
+    listEl.appendChild(item);
+
+    // Share row: show copy-link button when board is public
+    if(isPublic){
+      const shareRow=document.createElement('div');
+      shareRow.className='d-share-row';
+      const copyBtn=document.createElement('button');
+      copyBtn.type='button';copyBtn.className='d-copy-btn';
+      copyBtn.title='Copy share link';
+      copyBtn.innerHTML='🔗';
+      let copyTimer=null;
+      copyBtn.addEventListener('click',e=>{
         e.stopPropagation();
-        b.visibility=vc.next;
-        if(vc.next==='cooperative'&&b.id!==state.activeBoardId){
-          syncActiveBoard();
-          state.activeBoardId=b.id;
-          loadBoardIntoState(b);
-          applyBoardSize(b.width,b.height);
-        }
-        save();
-        window._boardApp?.sbUpdateVisibility?.(b.id,vc.next);
-        renderBoardList();
-        const app=window._boardApp;
-        if(vc.next==='public'||vc.next==='cooperative'){
-          app?.joinPresenceChannel?.(b.id);
-        } else {
-          app?.leavePresenceChannel?.();
-        }
+        const link=`${location.origin}${location.pathname}?board=${b.id}`;
+        navigator.clipboard.writeText(link).then(()=>{
+          copyBtn.innerHTML='✓';copyBtn.classList.add('copied');
+          clearTimeout(copyTimer);
+          copyTimer=setTimeout(()=>{copyBtn.innerHTML='🔗';copyBtn.classList.remove('copied');},2000);
+        }).catch(()=>prompt('Share link:',link));
       });
-
-      const acts=document.createElement('div');acts.className='d-acts';
-      acts.append(
-        mkbib('✏️','','Rename',()=>startRenameBoard(b,name)),
-        mkbib('⧉','','Duplicate',()=>dupBoard(b)),
-        ...(ownedBoards.length>1?[mkbib('✕','del','Delete',btn=>confirmDeleteBoard(b.id,btn))]:[])
-      );
-
-      item.append(dot,name,visBtn,acts);
-      listEl.appendChild(item);
-
-      // Share link row for public + cooperative
-      if(vis==='public'||vis==='cooperative'){
-        const shareRow=document.createElement('div');
-        shareRow.className='d-share-row';
-        const copyBtn=document.createElement('button');
-        copyBtn.type='button';copyBtn.className='d-copy-btn';
-        copyBtn.title='Copy share link';copyBtn.innerHTML='🔗';
-        let ct=null;
-        copyBtn.addEventListener('click',e=>{
-          e.stopPropagation();
-          const link=`${location.origin}${location.pathname}?board=${b.id}`;
-          navigator.clipboard.writeText(link).then(()=>{
-            copyBtn.innerHTML='✓';copyBtn.classList.add('copied');
-            clearTimeout(ct);ct=setTimeout(()=>{copyBtn.innerHTML='🔗';copyBtn.classList.remove('copied');},2000);
-          }).catch(()=>prompt('Share link:',link));
-        });
-        shareRow.appendChild(copyBtn);
-        listEl.appendChild(shareRow);
-      }
-    } else {
-      // Shared board — goes in "Condivise con me" section
-      sharedCount++;
-      const icon=document.createElement('span');
-      icon.className='vis-btn pub';icon.textContent='👥';
-      icon.title='Condivisa da qualcun altro';
-      icon.style.pointerEvents='none';
-      item.append(dot,name,icon);
-      if(sharedListEl)sharedListEl.appendChild(item);
+      shareRow.appendChild(copyBtn);
+      listEl.appendChild(shareRow);
     }
   });
-
-  if(sharedSec)sharedSec.style.display=sharedCount>0?'':'none';
-
-  // Members panel for cooperative board owner
-  renderMembersSection(null);
-  if(window._boardApp?.currentUser){
-    const ab=state.boards.find(b=>b.id===state.activeBoardId);
-    if(ab?.visibility==='cooperative'&&(!ab.ownerId||ab.ownerId===window._boardApp?.currentUser?.id)){
-      window._boardApp?.refreshMembers?.(ab.id);
-    }
-  }
 }
 
 function confirmDeleteBoard(boardId,anchorEl){
@@ -878,13 +721,6 @@ function switchBoard(id){
   renderBoardList();
   openDrawer(false);
   save();
-  // Presence: leave old channel, join new if board is shared
-  const app=window._boardApp;
-  if(b.visibility==='public'||b.visibility==='cooperative'){
-    app?.joinPresenceChannel?.(b.id);
-  } else {
-    app?.leavePresenceChannel?.();
-  }
 }
 
 function newBoard(){
@@ -901,7 +737,7 @@ function newBoard(){
 }
 
 function dupBoard(board){
-  syncActiveBoard(); // always flush active board before cloning any board
+  if(board.id===state.activeBoardId)syncActiveBoard();
   const dup=clone(board);
   dup.id=uid();
   dup.notes=dup.notes.map(n=>({...n,id:uid()}));
@@ -928,77 +764,6 @@ function execDeleteBoard(boardId){
 }
 
 $('newBoardBtn')?.addEventListener('click',e=>{e.stopPropagation();newBoard();});
-
-// ── MEMBERS SECTION ───────────────────────────────────────
-function renderMembersSection(members){
-  const sec=$('membersSec');if(!sec)return;
-  const isUser=!!(window._boardApp?.currentUser);
-  const ab=state.boards.find(b=>b.id===state.activeBoardId);
-  const isCoop=ab?.visibility==='cooperative';
-  const isOwner=isUser&&(!ab?.ownerId||ab.ownerId===window._boardApp?.currentUser?.id);
-  sec.style.display=(isUser&&isCoop&&isOwner)?'':'none';
-  if(!isUser||!isCoop||!isOwner)return;
-  const listEl=$('membersList');if(!listEl)return;
-  listEl.innerHTML='';
-  if(!members){
-    listEl.innerHTML='<div class="d-member-loading">···</div>';return;
-  }
-  if(!members.length){return;} // empty — only invite row shows
-  members.forEach(m=>{
-    const item=document.createElement('div');
-    item.className='d-member-item';
-    const av=document.createElement('div');av.className='d-member-avatar';
-    av.textContent=(m.email||'?')[0].toUpperCase();
-    av.title=m.email;
-    const email=document.createElement('span');email.className='d-member-email';
-    email.textContent=m.email;email.title=email.textContent;
-    const role=document.createElement('button');role.type='button';
-    role.className='d-member-role '+m.role;
-    role.textContent=m.role==='editor'?'✏':'👁';
-    role.title='Role: '+m.role+' — click to toggle';
-    role.addEventListener('click',async e=>{
-      e.stopPropagation();
-      const newRole=m.role==='editor'?'viewer':'editor';
-      await window._boardApp?.sbUpdateMemberRole?.(m.id,newRole);
-      window._boardApp?.refreshMembers?.(ab.id);
-    });
-    const rm=document.createElement('button');rm.type='button';
-    rm.className='d-bib del';rm.textContent='✕';rm.title='Remove member';
-    rm.addEventListener('click',async e=>{
-      e.stopPropagation();
-      await window._boardApp?.sbRemoveMember?.(m.id);
-      window._boardApp?.refreshMembers?.(ab.id);
-    });
-    item.append(av,email,role,rm);listEl.appendChild(item);
-  });
-}
-
-$('inviteBtn')?.addEventListener('click',async e=>{
-  e.stopPropagation();
-  const inp=$('inviteEmail');
-  const email=(inp?.value||'').trim().toLowerCase();
-  if(!email||!email.includes('@'))return;
-  const ab=state.boards.find(b=>b.id===state.activeBoardId);if(!ab)return;
-  const btn=$('inviteBtn');
-  inp.disabled=true;if(btn)btn.disabled=true;
-  try{
-    const err=await window._boardApp?.sbAddMember?.(ab.id,email,'editor');
-    if(err){
-      inp.style.borderColor='var(--danger,#e05c5c)';
-      setTimeout(()=>{inp.style.borderColor='';},1800);
-    } else {
-      inp.value='';
-    }
-  } catch(ex){
-    console.error('sbAddMember:',ex);
-    inp.style.borderColor='var(--danger,#e05c5c)';
-    setTimeout(()=>{inp.style.borderColor='';},1800);
-  } finally {
-    inp.disabled=false;if(btn)btn.disabled=false;
-  }
-  window._boardApp?.refreshMembers?.(ab.id);
-});
-$('inviteEmail')?.addEventListener('keydown',e=>{if(e.key==='Enter')$('inviteBtn')?.click();});
 
 // ── PRESETS ──────────────────────────────────────────────
 function renderPresets(){
@@ -1201,13 +966,12 @@ addNoteBtn.addEventListener('click',e=>{
   const vw=window.innerWidth,vh=window.innerHeight;
   const cx=Math.round(-state.panX+(vw/2)-105);
   const cy=Math.round(-state.panY+(vh/2)-90);
-  const newNote={id:uid(),text:'',color:state.noteColor,
+  state.notes.push({id:uid(),text:'',color:state.noteColor,
     x:Math.max(4,Math.min(state.boardW-214,cx)),
     y:Math.max(4,Math.min(state.boardH-184,cy)),
     w:210,h:180,rot:+(Math.random()*4-2).toFixed(1),
-    textColor:'#1f2328',fontSize:15,noteStrokes:[],updatedAt:Date.now()};
-  state.notes.push(newNote);renderNotes();save();
-  window._boardApp?.broadcastNoteCreate?.(newNote);
+    textColor:'#1f2328',fontSize:15,noteStrokes:[],updatedAt:Date.now()});
+  renderNotes();save();
 });
 
 // ── TEXT MODE ────────────────────────────────────────────
@@ -1277,8 +1041,6 @@ function redrawBoard(){
     s.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();
   });
   ctx.globalCompositeOperation='source-over';
-  // Re-draw any in-progress remote strokes so they survive clearRect
-  window._boardApp?.onAfterRedrawBoard?.();
 }
 function sketchPos(e){
   const r=sketch.getBoundingClientRect();
@@ -1287,24 +1049,15 @@ function sketchPos(e){
 sketch.addEventListener('pointerdown',e=>{
   if(!state.drawMode)return;
   drawing=true;sketch.setPointerCapture(e.pointerId);
-  boardStroke={_id:uid(),points:[sketchPos(e)],color:state.penColor,
+  boardStroke={points:[sketchPos(e)],color:state.penColor,
     size:state.eraser?state.eraserSize:state.penSize,eraser:state.eraser};
   state.strokes.push(boardStroke);redrawBoard();
 });
 sketch.addEventListener('pointermove',e=>{
   if(!drawing||!boardStroke)return;
-  const pt=sketchPos(e);boardStroke.points.push(pt);redrawBoard();
-  window._boardApp?.broadcastStrokePt?.({
-    strokeId:boardStroke._id,type:'board',x:pt.x,y:pt.y,
-    color:boardStroke.color,size:boardStroke.size,eraser:boardStroke.eraser});
+  boardStroke.points.push(sketchPos(e));redrawBoard();
 });
-window.addEventListener('pointerup',()=>{
-  if(drawing){
-    drawing=false;
-    if(boardStroke)window._boardApp?.broadcastStrokeEnd?.({strokeId:boardStroke._id,type:'board'});
-    boardStroke=null;save();
-  }
-});
+window.addEventListener('pointerup',()=>{if(drawing){drawing=false;boardStroke=null;save();}});
 
 // ── CONFIRM POPUP ────────────────────────────────────────
 function showConfirm(anchorEl,onConfirm,msg){
@@ -1373,8 +1126,7 @@ function makeNote(note){
   const ta=el.querySelector('textarea');
   const nc=el.querySelector('canvas.note-canvas');
   ta.value=note.text;ta.style.color=note.textColor;ta.style.fontSize=note.fontSize+'px';
-  ta.addEventListener('input',()=>{note.text=ta.value;note.updatedAt=Date.now();save();
-    window._boardApp?.broadcastNoteText?.(note.id,note.text,note.updatedAt);});
+  ta.addEventListener('input',()=>{note.text=ta.value;note.updatedAt=Date.now();save();});
 
   el.addEventListener('click',e=>{
     if(!state.textMode)return;
@@ -1385,11 +1137,9 @@ function makeNote(note){
   el.querySelector('[data-action="del"]').addEventListener('click',e=>{
     e.stopPropagation();
     showConfirm(e.currentTarget,()=>{
-      const delId=note.id;
-      state.notes=state.notes.filter(n=>n.id!==delId);
-      if(activeNote&&activeNote.note.id===delId)deactivateNote();
+      state.notes=state.notes.filter(n=>n.id!==note.id);
+      if(activeNote&&activeNote.note.id===note.id)deactivateNote();
       renderNotes();save();
-      window._boardApp?.broadcastNoteDelete?.(delId);
     });
   });
   el.querySelector('[data-action="dup"]').addEventListener('click',e=>{
@@ -1399,7 +1149,6 @@ function makeNote(note){
       y:Math.min(state.boardH-note.h-4,note.y+20),
       noteStrokes:clone(note.noteStrokes||[]),updatedAt:Date.now()};
     state.notes.push(dup);renderNotes();save();
-    window._boardApp?.broadcastNoteCreate?.(dup);
   });
 
   const head=el.querySelector('.note-head');
@@ -1413,16 +1162,12 @@ function makeNote(note){
       note.x=Math.max(4,Math.min(state.boardW-note.w-4,e.clientX-state.panX-drag.ox));
       note.y=Math.max(4,Math.min(state.boardH-note.h-4,e.clientY-state.panY-drag.oy));
       el.style.left=note.x+'px';el.style.top=note.y+'px';
-      note.updatedAt=Date.now();
-      window._boardApp?.broadcastNoteUpdate?.(note.id,note.x,note.y,note.w,note.h,note.updatedAt);
     }
     if(resizing&&resizing.id===note.id){
       note.w=Math.max(120,Math.min(state.boardW-note.x-4,resizing.sw+(e.clientX-resizing.sx)));
       note.h=Math.max(100,Math.min(state.boardH-note.y-4,resizing.sh+(e.clientY-resizing.sy)));
       el.style.width=note.w+'px';el.style.height=note.h+'px';
       resizeNoteCanvas(nc,note);
-      note.updatedAt=Date.now();
-      window._boardApp?.broadcastNoteUpdate?.(note.id,note.x,note.y,note.w,note.h,note.updatedAt);
     }
   });
   el.addEventListener('pointerup',()=>{
@@ -1444,24 +1189,12 @@ function makeNote(note){
   nc.addEventListener('pointerdown',e=>{
     if(!state.drawMode)return;
     nd=true;nc.setPointerCapture(e.pointerId);
-    ns={_id:uid(),points:[np(e)],color:state.penColor,
+    ns={points:[np(e)],color:state.penColor,
       size:state.eraser?state.eraserSize:state.penSize,eraser:state.eraser};
     note.noteStrokes.push(ns);redrawNoteCanvas(nc,note);e.stopPropagation();
   });
-  nc.addEventListener('pointermove',e=>{
-    if(!nd||!ns)return;
-    const pt=np(e);ns.points.push(pt);redrawNoteCanvas(nc,note);
-    window._boardApp?.broadcastStrokePt?.({
-      strokeId:ns._id,type:'note',noteId:note.id,x:pt.x,y:pt.y,
-      color:ns.color,size:ns.size,eraser:ns.eraser});
-  });
-  nc.addEventListener('pointerup',()=>{
-    if(nd){
-      nd=false;
-      if(ns)window._boardApp?.broadcastStrokeEnd?.({strokeId:ns._id,type:'note',noteId:note.id});
-      ns=null;save();
-    }
-  });
+  nc.addEventListener('pointermove',e=>{if(!nd||!ns)return;ns.points.push(np(e));redrawNoteCanvas(nc,note);});
+  nc.addEventListener('pointerup',()=>{if(nd){nd=false;ns=null;save();}});
   nc.addEventListener('pointercancel',()=>{nd=false;ns=null;});
   if(state.drawMode&&!state.eraser)nc.classList.add('draw-on');
   if(state.drawMode&&state.eraser)nc.classList.add('eraser-on');
@@ -1525,29 +1258,17 @@ updateClock();syncDraw();renderPresets();
 initDrawSlider();initTxtSlider();updateDrawPreview();
 document.title=state.boards.find(b=>b.id===state.activeBoardId)?.name||'Board';
 renderBoardList();
-window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampPan();applyPan();save();},80);});
+window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampPan();applyPan();},80);});
 
 // ── Bridge for module script ──────────────────────────────
 window._boardApp={
   state,mkBoard,syncActiveBoard,loadBoardIntoState,
-  applyBoardSize,renderBoardList,renderNotes,redrawBoard,redrawNoteCanvas,
-  renderMembersSection,switchBoard,
+  applyBoardSize,renderBoardList,renderNotes,redrawBoard,
   enterViewMode,exitViewMode,
-  makeNoteEl:makeNote,
   get isViewMode(){return isViewMode;},
-  stopVisibilityWatcher:null,
-  joinPresenceChannel:null,
-  leavePresenceChannel:null,
   currentUser:null,
   scheduleSbSave:null,sbCreateBoard:null,sbDeleteBoard:null,
   sbUpdateBoardName:null,sbUpdateVisibility:null,
-  sbAddMember:null,sbRemoveMember:null,sbUpdateMemberRole:null,
-  refreshMembers:null,
-  broadcastNoteUpdate:null,broadcastNoteText:null,
-  broadcastNoteCreate:null,broadcastNoteDelete:null,
-  broadcastStrokePt:null,broadcastStrokeEnd:null,
-  onAfterRedrawBoard:null,
-  syncDiag:null,   // set by module: () => { channel, liveStrokes, user }
 };
 
 })();
@@ -1589,8 +1310,6 @@ async function sbLoadBoards(client) {
       panX: 0, panY: 0,
       notes: (notes || []).map(r => r.data),
       strokes: strokes?.length ? (strokes[0].data || []) : [],
-      ownerId: b.owner_id,
-      visibility: b.visibility || 'private',
     };
   }));
   return loaded;
@@ -1618,51 +1337,6 @@ async function sbDeleteBoardFn(boardId) {
   await client.from('boards').delete().eq('id', boardId);
 }
 
-// ── Member ops ────────────────────────────────────────────
-async function sbAddMember(boardId, email, role = 'editor') {
-  if (!currentUser) return null;
-  const client = await getClient();
-  const { error } = await client.from('board_members').upsert({
-    board_id: boardId, owner_id: currentUser.id,
-    email, role,
-  }, { onConflict: 'board_id,email', ignoreDuplicates: false });
-  if (error) console.error('sbAddMember:', error.message);
-  return error ?? null;
-}
-
-async function sbRemoveMember(memberId) {
-  if (!currentUser) return;
-  const client = await getClient();
-  await client.from('board_members').delete().eq('id', memberId);
-}
-
-async function sbUpdateMemberRole(memberId, role) {
-  if (!currentUser) return;
-  const client = await getClient();
-  await client.from('board_members').update({ role }).eq('id', memberId);
-}
-
-async function sbLoadMembers(boardId) {
-  const client = await getClient();
-  const { data } = await client.from('board_members')
-    .select('id,email,role,status,user_id')
-    .eq('board_id', boardId)
-    .order('created_at');
-  return data || [];
-}
-
-// Called by IIFE bridge when members need refreshing
-async function refreshMembers(boardId) {
-  const app = window._boardApp;
-  if (!boardId || !app) return;
-  const members = await sbLoadMembers(boardId);
-  app.renderMembersSection(members);
-}
-
-// After login: activate any pending invites matching this user's email
-// claimPendingMemberships removed: access is now email-based (auth.email()),
-// no pending/active status needed. Board is visible immediately on login.
-
 async function updateBoardVisibility(boardId, vis) {
   if (!currentUser) return;
   const client = await getClient();
@@ -1678,21 +1352,8 @@ async function loadPublicBoard(boardId) {
     const client = await getClient();
     const { data: meta, error } = await client
       .from('boards').select('*').eq('id', boardId).single();
-
-    // RLS denies access when board is private or doesn't exist:
-    // anon users can only SELECT boards WHERE visibility='public' (policy 002).
-    // So if meta is null here, the board was set back to private → deny silently.
-    if (error || !meta) {
-      // Strip ?board= from URL so the user doesn't keep a dead link in their address bar
-      history.replaceState(null, '', location.pathname);
-      return; // show normal guest app
-    }
-    // Extra defence: should never reach here for private boards due to RLS,
-    // but guards against future policy changes or unexpected states.
-    if (meta.visibility !== 'public') {
-      history.replaceState(null, '', location.pathname);
-      return;
-    }
+    if (error || !meta) throw new Error('Board not found');
+    if (meta.visibility !== 'public') throw new Error('Board is private');
 
     const [{ data: notes }, { data: strokes }] = await Promise.all([
       client.from('notes').select('id,data').eq('board_id', boardId),
@@ -1709,579 +1370,45 @@ async function loadPublicBoard(boardId) {
     };
 
     if (app?.enterViewMode) app.enterViewMode(board);
-    // Watcher: evict viewer if board is set back to private
-    startVisibilityWatcher(boardId);
-    if (app) app.stopVisibilityWatcher = stopVisibilityWatcher;
   } catch (err) {
     console.warn('loadPublicBoard:', err.message);
-    history.replaceState(null, '', location.pathname);
-    return;
+    // Fall through — app shows normally (board not found or private)
   }
-  // Presence is non-critical — failure must NOT strip the ?board= URL
-  // or hide the board. Join after the critical path completes.
-  try {
-    await joinPresenceChannel(boardId);
-  } catch (err) {
-    console.warn('joinPresenceChannel (non-critical):', err.message);
-  }
-}
-
-// ── Visibility watcher (view mode only) ──────────────────
-let _visWatcher = null;
-
-function startVisibilityWatcher(boardId) {
-  stopVisibilityWatcher();
-  _visWatcher = setInterval(async () => {
-    const app = window._boardApp;
-    // Auto-stop if we left view mode some other way
-    if (!app?.isViewMode) { stopVisibilityWatcher(); return; }
-    try {
-      const client = await getClient();
-      // Anon SELECT: succeeds only if visibility is still 'public' (RLS 002).
-      // If it returns null the board was set to private → evict immediately.
-      const { data } = await client
-        .from('boards').select('visibility').eq('id', boardId).maybeSingle();
-      if (!data || data.visibility !== 'public') {
-        stopVisibilityWatcher();
-        // Wipe the view and exit
-        app.exitViewMode();
-        app.state.notes   = [];
-        app.state.strokes = [];
-        app.renderNotes?.();
-        app.redrawBoard?.();
-        history.replaceState(null, '', location.pathname);
-      }
-    } catch { /* network error — keep trying */ }
-  }, 12000); // check every 12 s
-}
-
-function stopVisibilityWatcher() {
-  if (_visWatcher) { clearInterval(_visWatcher); _visWatcher = null; }
-}
-
-// ── Presence (F5) ─────────────────────────────────────────
-// 10 distinct pastel-ish colours, assigned deterministically by userId hash
-const PRESENCE_COLORS = [
-  '#e05c5c','#e07a3a','#c8a020','#4fa84f','#3a9e8a',
-  '#3a7ec8','#6a5bd4','#b04db0','#c04070','#5a8f6a',
-];
-function presenceColor(userId) {
-  let h = 0;
-  for (let i = 0; i < userId.length; i++) h = (Math.imul(31, h) + userId.charCodeAt(i)) | 0;
-  return PRESENCE_COLORS[Math.abs(h) % PRESENCE_COLORS.length];
-}
-function presenceInitials(name) {
-  if (!name) return '?';
-  const parts = name.trim().split(/\s+/);
-  return parts.length >= 2
-    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-    : name.slice(0, 2).toUpperCase();
-}
-
-let _presenceChannel = null;
-// Expose sync diagnostics to console: window._boardApp.syncDiag()
-setTimeout(() => {
-  const _app = window._boardApp;
-  if (_app) _app.syncDiag = () => ({
-    channel: !!_presenceChannel,
-    channelState: _presenceChannel?.state ?? 'none',
-    liveStrokes: _liveStrokes.size,
-    user: currentUser?.email ?? 'not logged in',
-    boardId: _app.state?.activeBoardId,
-    boardVis: _app.state?.boards?.find(b => b.id === _app.state?.activeBoardId)?.visibility,
-  });
-}, 500);
-
-function renderPresenceStack(peers) {
-  const stack = document.getElementById('presenceStack');
-  if (!stack) return;
-  stack.innerHTML = '';
-  if (!peers.length) { stack.classList.add('hidden'); return; }
-  stack.classList.remove('hidden');
-
-  const MAX = 5;
-  const visible = peers.slice(0, MAX);
-  const extra   = peers.length - MAX;
-
-  // "+N" overflow pill (rendered first → appears rightmost due to row-reverse)
-  if (extra > 0) {
-    const pill = document.createElement('div');
-    pill.className = 'pav pav-more';
-    pill.textContent = '+' + extra;
-    pill.title = extra + ' more online';
-    stack.appendChild(pill);
-  }
-  // Individual avatars (reversed so first peer is rightmost)
-  [...visible].reverse().forEach(p => {
-    const av = document.createElement('div');
-    av.className = 'pav';
-    av.style.background = presenceColor(p.userId);
-    av.textContent = presenceInitials(p.name);
-    av.title = p.name || p.email || 'Anonymous';
-    stack.appendChild(av);
-  });
-}
-
-// ── Cursor layer (F6) ────────────────────────────────────
-const _remoteCursors = new Map(); // userId → { el, timer }
-
-function _cursorSvg(color) {
-  return `<svg width="14" height="18" viewBox="0 0 14 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M1 1 L1 13.5 L4.5 10 L7 16.5 L9 15.5 L6.5 9 L11 9 Z"
-          fill="${color}" stroke="rgba(255,255,255,.85)" stroke-width="1.2" stroke-linejoin="round"/>
-  </svg>`;
-}
-
-function upsertRemoteCursor(userId, x, y, name, color) {
-  const layer = document.getElementById('cursorsLayer');
-  if (!layer) return;
-  let entry = _remoteCursors.get(userId);
-  if (!entry) {
-    const el = document.createElement('div');
-    el.className = 'remote-cursor';
-    el.innerHTML = _cursorSvg(color) +
-      `<span class="cursor-label" style="background:${color}">${name}</span>`;
-    layer.appendChild(el);
-    entry = { el, timer: null };
-    _remoteCursors.set(userId, entry);
-  }
-  entry.el.style.left = x + 'px';
-  entry.el.style.top  = y + 'px';
-  entry.el.classList.remove('fading');
-  // Auto-fade after 3 s of no movement
-  clearTimeout(entry.timer);
-  entry.timer = setTimeout(() => entry.el.classList.add('fading'), 3000);
-}
-
-function removeRemoteCursor(userId) {
-  const entry = _remoteCursors.get(userId);
-  if (entry) { entry.el.remove(); clearTimeout(entry.timer); }
-  _remoteCursors.delete(userId);
-}
-
-function clearAllCursors() {
-  _remoteCursors.forEach((_, id) => removeRemoteCursor(id));
-}
-
-// Throttled cursor sender — max 30 fps
-let _lastCursorSend = 0;
-const _CURSOR_MS = 33;
-// Stable anon key so guest cursors stay consistent within a session
-const _anonKey = 'anon-' + Math.random().toString(36).slice(2);
-// My display name — set when joining presence channel
-let _myPresenceName = 'Guest';
-
-function sendCursor(clientX, clientY) {
-  if (!_presenceChannel || document.hidden) return;
-  const now = Date.now();
-  if (now - _lastCursorSend < _CURSOR_MS) return;
-  _lastCursorSend = now;
-  const app = window._boardApp;
-  if (!app) return;
-  const bx = Math.round(clientX - (app.state.panX || 0));
-  const by = Math.round(clientY - (app.state.panY || 0));
-  _presenceChannel.send({ type: 'broadcast', event: 'cursor',
-    payload: { userId: currentUser?.id ?? _anonKey, x: bx, y: by, name: _myPresenceName } });
-}
-
-// Global pointermove → send cursor (only active when channel is open)
-document.addEventListener('pointermove', e => sendCursor(e.clientX, e.clientY), { passive: true });
-
-async function joinPresenceChannel(boardId) {
-  await leavePresenceChannel();
-  if (!boardId) return;
-  console.log('[sync] joining channel board:' + boardId);
-
-  const client = await getClient();
-  const app    = window._boardApp;
-  const user   = currentUser;
-
-  const meta  = user?.user_metadata ?? {};
-  const name  = meta.full_name ?? meta.name ?? user?.email?.split('@')[0] ?? 'Guest';
-  _myPresenceName = name;
-  const myKey = user?.id ?? _anonKey;
-  const color = presenceColor(myKey);
-
-  _presenceChannel = client.channel('board:' + boardId, {
-    config: { presence: { key: myKey } },
-  });
-
-  _presenceChannel
-    // ── Presence sync → avatar stack ──────────────────────
-    .on('presence', { event: 'sync' }, () => {
-      const ps = _presenceChannel.presenceState();
-      const peers = Object.entries(ps)
-        .map(([, payloads]) => payloads[0])
-        .filter(p => p && p.userId !== myKey);
-      renderPresenceStack(peers);
-      // Remove cursors for users no longer present
-      const liveIds = new Set(peers.map(p => p.userId).filter(Boolean));
-      _remoteCursors.forEach((_, uid) => { if (!liveIds.has(uid)) removeRemoteCursor(uid); });
-    })
-    // ── Cursor broadcast → remote cursor layer ────────────
-    .on('broadcast', { event: 'cursor' }, ({ payload }) => {
-      if (!payload || payload.userId === myKey) return;
-      // Name comes directly from the payload (set at broadcast time).
-      // Fall back to presence state in case this is an older client.
-      const ps = _presenceChannel.presenceState();
-      const peerPayload = Object.values(ps).flat().find(p => p.userId === payload.userId);
-      const peerName  = payload.name ?? peerPayload?.name ?? 'Guest';
-      const peerColor = presenceColor(payload.userId);
-      upsertRemoteCursor(payload.userId, payload.x, payload.y, peerName, peerColor);
-    })
-    // ── Note sync ─────────────────────────────────────────
-    .on('broadcast', { event: 'note:update' }, ({ payload }) => {
-      if (!payload || payload.userId === myKey) return;
-      handleNoteUpdate(payload);
-    })
-    .on('broadcast', { event: 'note:text' }, ({ payload }) => {
-      if (!payload || payload.userId === myKey) return;
-      handleNoteText(payload);
-    })
-    .on('broadcast', { event: 'note:create' }, ({ payload }) => {
-      if (!payload || payload.userId === myKey) return;
-      handleNoteCreate(payload);
-    })
-    .on('broadcast', { event: 'note:delete' }, ({ payload }) => {
-      if (!payload || payload.userId === myKey) return;
-      handleNoteDelete(payload);
-    })
-    // ── Stroke sync ───────────────────────────────────────
-    .on('broadcast', { event: 'stroke:pt' }, ({ payload }) => {
-      if (!payload || payload.userId === myKey) return;
-      handleStrokePt(payload);
-    })
-    .on('broadcast', { event: 'stroke:end' }, ({ payload }) => {
-      if (!payload || payload.userId === myKey) return;
-      handleStrokeEnd(payload);
-    })
-    .subscribe(async status => {
-      console.log('[sync] channel status:', status);
-      if (status === 'SUBSCRIBED') {
-        await _presenceChannel.track({ userId: myKey, name, color, boardId, joinedAt: Date.now() });
-        installRedrawHook(); // activate after-redraw hook for live remote strokes
-        console.log('[sync] subscribed as', name, '(' + myKey + ')');
-      }
-    });
-}
-
-async function leavePresenceChannel() {
-  if (_presenceChannel) {
-    try {
-      await _presenceChannel.untrack();
-      const client = await getClient();
-      await client.removeChannel(_presenceChannel);
-    } catch { /* ignore */ }
-    _presenceChannel = null;
-  }
-  renderPresenceStack([]);
-  clearAllCursors();
-  _liveStrokes.clear();
-  const app = window._boardApp;
-  if (app) app.onAfterRedrawBoard = null;
-}
-
-// Hook into redrawBoard so in-progress remote strokes survive clearRect calls
-function installRedrawHook() {
-  const app = window._boardApp;
-  if (!app) return;
-  app.onAfterRedrawBoard = () => {
-    if (!_liveStrokes.size) return;
-    const canvas = document.getElementById('sketch');
-    if (!canvas) return;
-    const c = canvas.getContext('2d');
-    _liveStrokes.forEach(live => {
-      if (live.type !== 'board' || live.points.length < 2) return;
-      c.lineCap = 'round'; c.lineJoin = 'round';
-      c.globalCompositeOperation = live.eraser ? 'destination-out' : 'source-over';
-      c.strokeStyle = live.eraser ? 'rgba(0,0,0,1)' : (live.color || '#1f2328');
-      c.lineWidth = live.size || 7;
-      c.beginPath();
-      c.moveTo(live.points[0].x, live.points[0].y);
-      for (let i = 1; i < live.points.length; i++) c.lineTo(live.points[i].x, live.points[i].y);
-      c.stroke();
-      c.globalCompositeOperation = 'source-over';
-    });
-  };
-}
-
-// Clean up on page unload / tab hidden
-window.addEventListener('beforeunload', () => leavePresenceChannel());
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) leavePresenceChannel();
-  else {
-    // Rejoin when tab becomes visible again
-    const app = window._boardApp;
-    const ab  = app?.state?.boards?.find(b => b.id === app.state.activeBoardId);
-    if (ab && (ab.visibility === 'public' || ab.visibility === 'cooperative')) {
-      joinPresenceChannel(ab.id);
-    }
-  }
-});
-
-// ── F7 — Sync badge ───────────────────────────────────────
-let _syncHideTimer = null;
-function setSyncStatus(status) {
-  const badge = document.getElementById('syncBadge');
-  const label = document.getElementById('syncLabel');
-  if (!badge || !label) return;
-  badge.className = 'sync-badge show ' + status;
-  label.textContent = status === 'saved' ? 'Saved' : status === 'saving' ? 'Saving…' : 'Offline';
-  clearTimeout(_syncHideTimer);
-  if (status === 'saved') _syncHideTimer = setTimeout(() => badge.classList.remove('show'), 2500);
-}
-function showSyncToast(msg) {
-  const t = document.getElementById('syncToast');
-  if (!t) return;
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-window.addEventListener('offline', () => setSyncStatus('offline'));
-window.addEventListener('online',  () => {
-  if (!currentUser) return;
-  showSyncToast('Reconnected — syncing…');
-  doSbSave();
-});
-
-// ── F7 — Broadcast functions ──────────────────────────────
-// All functions are no-ops if no channel is open or user not logged in.
-let _lastNoteBroadcastMs = 0;
-function broadcastNoteUpdate(id, x, y, w, h, updatedAt) {
-  if (!_presenceChannel || !currentUser) return;
-  const now = Date.now();
-  if (now - _lastNoteBroadcastMs < 33) return; // 30 fps cap
-  _lastNoteBroadcastMs = now;
-  _presenceChannel.send({ type: 'broadcast', event: 'note:update',
-    payload: { id, x, y, w, h, updatedAt, userId: currentUser.id } });
-}
-function broadcastNoteText(id, text, updatedAt) {
-  if (!_presenceChannel || !currentUser) return;
-  _presenceChannel.send({ type: 'broadcast', event: 'note:text',
-    payload: { id, text, updatedAt, userId: currentUser.id } });
-}
-function broadcastNoteCreate(note) {
-  if (!_presenceChannel || !currentUser) return;
-  _presenceChannel.send({ type: 'broadcast', event: 'note:create',
-    payload: { note, userId: currentUser.id } });
-}
-function broadcastNoteDelete(id) {
-  if (!_presenceChannel || !currentUser) return;
-  _presenceChannel.send({ type: 'broadcast', event: 'note:delete',
-    payload: { id, userId: currentUser.id } });
-}
-function broadcastStrokePt(data) {
-  if (!_presenceChannel || !currentUser) return;
-  _presenceChannel.send({ type: 'broadcast', event: 'stroke:pt',
-    payload: { ...data, userId: currentUser.id } });
-}
-function broadcastStrokeEnd(data) {
-  if (!_presenceChannel || !currentUser) return;
-  console.log('[sync] broadcastStrokeEnd', data.strokeId);
-  _presenceChannel.send({ type: 'broadcast', event: 'stroke:end',
-    payload: { ...data, userId: currentUser.id } });
-}
-
-// ── F7 — Receive handlers ─────────────────────────────────
-const _liveStrokes = new Map(); // strokeId → {points, color, size, eraser, type, noteId}
-
-function handleNoteUpdate({ id, x, y, w, h, updatedAt }) {
-  const app = window._boardApp;
-  const note = app?.state.notes.find(n => n.id === id);
-  if (!note) return;
-  if (updatedAt && note.updatedAt && updatedAt < note.updatedAt) return; // last-write-wins
-  note.x = x; note.y = y; note.w = w; note.h = h;
-  if (updatedAt) note.updatedAt = updatedAt;
-  const el = document.querySelector(`.note[data-id="${id}"]`);
-  if (!el) return;
-  el.style.left = x + 'px'; el.style.top = y + 'px';
-  el.style.width = w + 'px'; el.style.height = h + 'px';
-  // Resize + redraw note canvas
-  const nc = el.querySelector('canvas.note-canvas');
-  if (nc) {
-    const dpr = window.devicePixelRatio || 1;
-    const ch = h - 34;
-    nc.width = Math.round(w * dpr); nc.height = Math.round(ch * dpr);
-    nc.style.width = w + 'px'; nc.style.height = ch + 'px';
-    const c = nc.getContext('2d');
-    c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    c.lineCap = 'round'; c.lineJoin = 'round';
-    (note.noteStrokes || []).forEach(s => {
-      if (!s.points || s.points.length < 2) return;
-      c.globalCompositeOperation = s.eraser ? 'destination-out' : 'source-over';
-      c.strokeStyle = s.eraser ? 'rgba(0,0,0,1)' : (s.color || '#1f2328');
-      c.lineWidth = s.size || 7;
-      c.beginPath(); c.moveTo(s.points[0].x, s.points[0].y);
-      s.points.slice(1).forEach(p => c.lineTo(p.x, p.y)); c.stroke();
-    });
-    c.globalCompositeOperation = 'source-over';
-  }
-}
-
-function handleNoteText({ id, text, updatedAt }) {
-  const app = window._boardApp;
-  const note = app?.state.notes.find(n => n.id === id);
-  if (!note) return;
-  if (updatedAt && note.updatedAt && updatedAt < note.updatedAt) return;
-  note.text = text;
-  if (updatedAt) note.updatedAt = updatedAt;
-  const ta = document.querySelector(`.note[data-id="${id}"] textarea`);
-  if (ta && ta !== document.activeElement) ta.value = text;
-}
-
-function handleNoteCreate({ note }) {
-  const app = window._boardApp;
-  if (!app || !note?.id) return;
-  if (app.state.notes.find(n => n.id === note.id)) return; // dedupe
-  app.state.notes.push(note);
-  const el = app.makeNoteEl?.(note);
-  if (el) document.getElementById('notesLayer')?.appendChild(el);
-}
-
-function handleNoteDelete({ id }) {
-  const app = window._boardApp;
-  if (!app || !id) return;
-  app.state.notes = app.state.notes.filter(n => n.id !== id);
-  document.querySelector(`.note[data-id="${id}"]`)?.remove();
-}
-
-function handleStrokePt({ strokeId, type, noteId, x, y, color, size, eraser }) {
-  let live = _liveStrokes.get(strokeId);
-  if (!live) {
-    live = { points: [], color, size, eraser, type, noteId };
-    _liveStrokes.set(strokeId, live);
-  }
-  const prev = live.points[live.points.length - 1];
-  live.points.push({ x, y });
-  if (!prev) return; // need 2 points to draw a segment
-  // Draw segment incrementally on the appropriate canvas
-  let canvas = null;
-  if (type === 'board') {
-    canvas = document.getElementById('sketch');
-  } else if (type === 'note' && noteId) {
-    canvas = document.querySelector(`.note[data-id="${noteId}"] canvas.note-canvas`);
-  }
-  if (!canvas) return;
-  const c = canvas.getContext('2d');
-  c.lineCap = 'round'; c.lineJoin = 'round';
-  c.globalCompositeOperation = eraser ? 'destination-out' : 'source-over';
-  c.strokeStyle = eraser ? 'rgba(0,0,0,1)' : (color || '#1f2328');
-  c.lineWidth = size || 7;
-  c.beginPath(); c.moveTo(prev.x, prev.y); c.lineTo(x, y); c.stroke();
-  c.globalCompositeOperation = 'source-over';
-}
-
-function handleStrokeEnd({ strokeId, type, noteId }) {
-  console.log('[sync] handleStrokeEnd received', strokeId);
-  const live = _liveStrokes.get(strokeId);
-  if (!live) { console.warn('[sync] handleStrokeEnd: no live stroke for', strokeId); return; }
-  const app = window._boardApp;
-  if (app && live.points.length >= 2) {
-    // Commit to state so redrawBoard/redrawNoteCanvas stays consistent
-    const stroke = { points: live.points, color: live.color, size: live.size, eraser: live.eraser };
-    if (type === 'board') {
-      app.state.strokes.push(stroke);
-      _liveStrokes.delete(strokeId);
-      app.redrawBoard(); // re-render with committed stroke
-      return;
-    } else if (type === 'note' && noteId) {
-      const note = app.state.notes.find(n => n.id === noteId);
-      if (note) {
-        if (!note.noteStrokes) note.noteStrokes = [];
-        note.noteStrokes.push(stroke);
-        _liveStrokes.delete(strokeId);
-        const nc = document.querySelector(`.note[data-id="${noteId}"] canvas.note-canvas`);
-        if (nc) app.redrawNoteCanvas?.(nc, note);
-        return;
-      }
-    }
-  }
-  _liveStrokes.delete(strokeId);
 }
 
 let sbSaveTimer = null;
-let _sbRetryDelay = 0;
-const _SB_MAX_RETRY = 30000;
-
 async function doSbSave() {
   const app = window._boardApp;
   if (!currentUser || !app) return;
-  setSyncStatus('saving');
-  try {
-    const client = await getClient();
-    app.syncActiveBoard();
-    const b = app.state.boards.find(bd => bd.id === app.state.activeBoardId);
-    if (!b) return;
-    const ts = new Date().toISOString();
-    const isOwnerBoard = !b.ownerId || b.ownerId === currentUser.id;
+  const client = await getClient();
+  app.syncActiveBoard();
+  const b = app.state.boards.find(bd => bd.id === app.state.activeBoardId);
+  if (!b) return;
+  const ts = new Date().toISOString();
 
-    // ── Board metadata (owner only) ─────────────────────────
-    if (isOwnerBoard) {
-      const { error: be } = await client.from('boards').upsert({
-        id: b.id, owner_id: currentUser.id,
-        name: b.name, width: b.width, height: b.height,
-        visibility: b.visibility || 'private',
-        updated_at: ts,
-      });
-      if (be) console.warn('doSbSave boards upsert:', be.message);
-    }
+  await client.from('boards').upsert({
+    id: b.id, owner_id: currentUser.id,
+    name: b.name, width: b.width, height: b.height, updated_at: ts,
+  });
 
-    // ── Notes upsert ────────────────────────────────────────
-    // Always use board owner_id so the owner can SELECT via notes_all_owner.
-    // Guests upsert with owner_id = board_owner_id; notes_write_editor allows it.
-    const notesOwnerId = b.ownerId || currentUser.id;
-
-    if (b.notes.length > 0) {
-      const { error: ne } = await client.from('notes').upsert(
-        b.notes.map(n => ({ id: n.id, board_id: b.id, owner_id: notesOwnerId, data: n, updated_at: ts }))
-      );
-      if (ne) console.warn('doSbSave notes upsert:', ne.message);
-    }
-
-    // ── Notes delete (owner only) ───────────────────────────
-    // Guests must NOT delete notes from DB: their local state may be missing notes
-    // created by the owner or other collaborators after the guest last synced.
-    // Only the owner has an authoritative view of which notes should exist.
-    if (isOwnerBoard) {
-      const { data: existing } = await client.from('notes').select('id').eq('board_id', b.id);
-      const curIds = new Set(b.notes.map(n => n.id));
-      const toDelete = (existing || []).map(r => r.id).filter(id => !curIds.has(id));
-      if (toDelete.length) {
-        const { error: de } = await client.from('notes').delete().in('id', toDelete);
-        if (de) console.warn('doSbSave notes delete:', de.message);
-      }
-    }
-
-    // ── Strokes (owner only) ────────────────────────────────
-    // The strokes table stores ONE row per board (full array, last-write-wins).
-    // If both owner and guest save independently, the later save overwrites the
-    // earlier one — and whichever save is missing strokes from the other user
-    // will silently delete them from the DB.
-    // Fix: only the board owner writes to the strokes row. The owner receives
-    // guest strokes via broadcast (handleStrokeEnd), accumulates them in
-    // state.strokes, and persists the unified array on their next save.
-    // Guests broadcast their strokes for live sync but do NOT write to DB.
-    if (isOwnerBoard) {
-      const { error: se } = await client.from('strokes').upsert({
-        id: b.id, board_id: b.id, owner_id: currentUser.id,
-        data: b.strokes, updated_at: ts,
-      });
-      if (se) console.warn('doSbSave strokes upsert:', se.message);
-    }
-
-    setSyncStatus('saved');
-    _sbRetryDelay = 0; // reset backoff on success
-  } catch (err) {
-    console.warn('doSbSave failed:', err?.message ?? err);
-    setSyncStatus('offline');
-    // Exponential backoff retry (2s → 4s → 8s → … → 30s max)
-    _sbRetryDelay = _sbRetryDelay ? Math.min(_sbRetryDelay * 2, _SB_MAX_RETRY) : 2000;
-    sbSaveTimer = setTimeout(doSbSave, _sbRetryDelay);
+  if (b.notes.length > 0) {
+    await client.from('notes').upsert(
+      b.notes.map(n => ({ id: n.id, board_id: b.id, owner_id: currentUser.id, data: n, updated_at: ts }))
+    );
   }
+  // Delete notes removed from this board
+  const { data: existing } = await client.from('notes').select('id').eq('board_id', b.id);
+  const curIds = new Set(b.notes.map(n => n.id));
+  const toDelete = (existing || []).map(r => r.id).filter(id => !curIds.has(id));
+  if (toDelete.length) await client.from('notes').delete().in('id', toDelete);
+
+  // One strokes row per board (id = board.id as deterministic upsert key)
+  await client.from('strokes').upsert({
+    id: b.id, board_id: b.id, owner_id: currentUser.id, data: b.strokes, updated_at: ts,
+  });
 }
 
 function scheduleSbSave() {
-  setSyncStatus('saving');
   clearTimeout(sbSaveTimer);
   sbSaveTimer = setTimeout(doSbSave, 1500);
 }
@@ -2319,57 +1446,42 @@ async function renderAuth(session) {
       app.sbDeleteBoard       = sbDeleteBoardFn;
       app.sbUpdateBoardName   = sbUpdateBoardName;
       app.sbUpdateVisibility  = updateBoardVisibility;
-      app.sbAddMember          = sbAddMember;
-      app.sbRemoveMember       = sbRemoveMember;
-      app.sbUpdateMemberRole   = sbUpdateMemberRole;
-      app.refreshMembers       = refreshMembers;
-      app.joinPresenceChannel  = joinPresenceChannel;
-      app.leavePresenceChannel = leavePresenceChannel;
-      app.broadcastNoteUpdate  = broadcastNoteUpdate;
-      app.broadcastNoteText    = broadcastNoteText;
-      app.broadcastNoteCreate  = broadcastNoteCreate;
-      app.broadcastNoteDelete  = broadcastNoteDelete;
-      app.broadcastStrokePt    = broadcastStrokePt;
-      app.broadcastStrokeEnd   = broadcastStrokeEnd;
     }
 
     // Load boards from Supabase, preserving any offline guest work first
     try {
       const client = await getClient();
 
-      // ── Step 1: upsert the current board if it has local content ──
-      // Only for boards owned by this user (no ownerId = locally-created guest board,
-      // or ownerId matches current user). Shared boards (ownerId = other user) must
-      // NOT be upserted here — trying to write another user's board row → 403.
+      // ── Step 1: upsert the current guest board if it has content ──
+      // This handles BOTH first-login and returning-user-with-offline-edits scenarios.
+      // We always push local content to Supabase before loading, so offline edits
+      // are never lost regardless of whether the user has existing cloud boards.
       let savedGuestBoardId = null;
       if (app) {
         app.syncActiveBoard?.();
         const gb = app.state.boards?.find(b => b.id === app.state.activeBoardId)
                 || app.state.boards?.[0];
-        const isOwnBoard = gb && (!gb.ownerId || gb.ownerId === session.user.id);
-        const hasContent = isOwnBoard && ((gb.notes?.length > 0) || (gb.strokes?.length > 0));
+        const hasContent = gb && ((gb.notes?.length > 0) || (gb.strokes?.length > 0));
         if (hasContent) {
           savedGuestBoardId = gb.id;
           const ts = new Date().toISOString();
-          const { error: gbe } = await client.from('boards').upsert({
+          // upsert: insert if new board, update if returning user's board
+          await client.from('boards').upsert({
             id: gb.id, owner_id: session.user.id,
             name: gb.name || 'Board', width: gb.width || 1366, height: gb.height || 768,
             updated_at: ts,
           });
-          if (gbe) console.warn('login board upsert:', gbe.message);
           if (gb.notes.length) {
-            const { error: gne } = await client.from('notes').upsert(
+            await client.from('notes').upsert(
               gb.notes.map(n => ({
                 id: n.id, board_id: gb.id, owner_id: session.user.id, data: n, updated_at: ts,
               }))
             );
-            if (gne) console.warn('login notes upsert:', gne.message);
           }
-          const { error: gse } = await client.from('strokes').upsert({
+          await client.from('strokes').upsert({
             id: gb.id, board_id: gb.id, owner_id: session.user.id,
             data: gb.strokes || [], updated_at: ts,
           });
-          if (gse) console.warn('login strokes upsert:', gse.message);
         }
       }
 
@@ -2389,28 +1501,14 @@ async function renderAuth(session) {
       }
 
       if (app) {
-        // Prefer: 1) just-saved guest board (offline work), 2) last board from prefs, 3) boards[0]
-        let lastActiveBoardId = null;
-        try { lastActiveBoardId = JSON.parse(localStorage.getItem('board-lite-v10-prefs') || '{}').activeBoardId ?? null; } catch {}
-        const preferredId = savedGuestBoardId || lastActiveBoardId || null;
+        // Prefer the just-saved guest board so offline work is immediately visible
+        const preferredId = savedGuestBoardId || app.state.activeBoardId;
         const active = boards.find(b => b.id === preferredId) || boards[0];
         app.state.boards = boards;
-        // If the URL had ?board=uuid (e.g. invite link), switch directly to that
-        // board if it's now accessible (claimPendingMemberships may have just activated it)
-        const urlBoardId = new URLSearchParams(location.search).get('board');
-        const urlBoard = urlBoardId ? boards.find(b => b.id === urlBoardId) : null;
-        const chosen = urlBoard || active;
-        // Clean up the URL param now that we've handled it
-        if (urlBoardId) history.replaceState(null, '', location.pathname);
-
-        app.state.activeBoardId = chosen.id;
-        app.loadBoardIntoState(chosen);
-        app.applyBoardSize(chosen.width, chosen.height);
+        app.state.activeBoardId = active.id;
+        app.loadBoardIntoState(active);
+        app.applyBoardSize(active.width, active.height);
         app.renderBoardList();
-        // Join presence channel if board is shared
-        if (chosen.visibility === 'public' || chosen.visibility === 'cooperative') {
-          joinPresenceChannel(chosen.id);
-        }
       }
     } catch (err) {
       console.error('Supabase board load failed:', err);
@@ -2425,39 +1523,31 @@ async function renderAuth(session) {
     googleBtn.innerHTML = GOOGLE_SVG;
 
     if (app) {
-      // On logout: clear bridge functions first, then wipe cloud state.
-      // We do NOT carry cloud boards to the guest session (privacy).
+      // Save current logged-in state to localStorage before switching to guest
+      app.syncActiveBoard?.();
+      try { localStorage.setItem('board-lite-v10', JSON.stringify(app.state)); } catch {}
+
       app.currentUser        = null;
       app.scheduleSbSave     = null;
       app.sbCreateBoard      = null;
       app.sbDeleteBoard      = null;
       app.sbUpdateBoardName  = null;
       app.sbUpdateVisibility = null;
-      app.sbAddMember          = null;
-      app.sbRemoveMember       = null;
-      app.sbUpdateMemberRole   = null;
-      app.refreshMembers       = null;
-      app.joinPresenceChannel  = null;
-      app.leavePresenceChannel = null;
-      app.broadcastNoteUpdate  = null;
-      app.broadcastNoteText    = null;
-      app.broadcastNoteCreate  = null;
-      app.broadcastNoteDelete  = null;
-      app.broadcastStrokePt    = null;
-      app.broadcastStrokeEnd   = null;
-      await leavePresenceChannel();
 
-      // Start fresh: a blank guest board — cloud data stays in Supabase only.
-      const freshBoard = app.mkBoard?.() ?? {
-        id: crypto.randomUUID(), name: 'Board',
-        width: 1366, height: 768, panX: 0, panY: 0, notes: [], strokes: [],
-      };
-      const freshState = { boards: [freshBoard], activeBoardId: freshBoard.id };
-      try { localStorage.setItem('board-lite-v10', JSON.stringify(freshState)); } catch {}
-      app.state.boards = [freshBoard];
-      app.state.activeBoardId = freshBoard.id;
-      app.loadBoardIntoState(freshBoard);
-      app.applyBoardSize(freshBoard.width, freshBoard.height);
+      // Restore guest boards from localStorage
+      let raw = {};
+      try { raw = JSON.parse(localStorage.getItem('board-lite-v10') || '{}'); } catch {}
+      if (!raw.boards?.length) {
+        const b = { id: crypto.randomUUID(), name: 'Board',
+          width: raw.boardW || 1366, height: raw.boardH || 768,
+          panX: 0, panY: 0, notes: raw.notes || [], strokes: raw.strokes || [] };
+        raw.boards = [b]; raw.activeBoardId = b.id;
+      }
+      const active = raw.boards.find(b => b.id === raw.activeBoardId) || raw.boards[0];
+      app.state.boards = raw.boards;
+      app.state.activeBoardId = active.id;
+      app.loadBoardIntoState(active);
+      app.applyBoardSize(active.width, active.height);
       app.renderBoardList();
     }
   }
@@ -2499,79 +1589,16 @@ logoutBtn.addEventListener('click', async () => {
 
 // ── Bootstrap ─────────────────────────────────────────────
 (async () => {
+  // View mode: ?board=<uuid> in URL — load public board read-only, skip normal auth flow
   const urlBoard = new URLSearchParams(location.search).get('board');
+  if (urlBoard) {
+    await loadPublicBoard(urlBoard);
+    return; // don't mount editing UI
+  }
 
+  // Normal app flow
   try {
     const client = await getClient();
-
-    if (urlBoard) {
-      // Peek at visibility before deciding the routing strategy.
-      // RLS: anon can read public boards, so a private/cooperative board returns null here.
-      const { data: meta } = await client.from('boards')
-        .select('id,visibility').eq('id', urlBoard).maybeSingle();
-
-      if (meta?.visibility === 'public') {
-        // Public board → view mode (no auth setup needed)
-        await loadPublicBoard(urlBoard);
-        return;
-      }
-      // Cooperative board OR truly inaccessible (private/deleted).
-      // Cannot distinguish the two as anon — cooperative boards are RLS-invisible
-      // to unauthenticated users just like private ones.
-      // Do NOT strip the URL: if the user logs in and is a member,
-      // renderAuth will switch to this board after loading boards.
-    }
-
-    // ── TEST MODE — ?test=Name&board=UUID ─────────────────────
-    // Joins presence + enables broadcast without any Google login.
-    // DB reads/writes are skipped (local board state only).
-    // Usage: open a second tab with ?test=Alice&board=<board-id>
-    const _testName  = new URLSearchParams(location.search).get('test');
-    const _testBoard = new URLSearchParams(location.search).get('board');
-    if (_testName && _testBoard) {
-      // Stable UUID derived from name so cursor colour is consistent across refreshes
-      let _th = 5381;
-      for (let i = 0; i < _testName.length; i++) _th = (Math.imul(33, _th) ^ _testName.charCodeAt(i)) >>> 0;
-      const _hex = _th.toString(16).padStart(8,'0');
-      const _fakeId = `${_hex}-test-4est-test-${_hex}${_hex.slice(0,4)}`;
-
-      currentUser = {
-        id: _fakeId,
-        email: _testName.toLowerCase().replace(/\s+/g,'.') + '@test.local',
-        user_metadata: { full_name: _testName },
-      };
-
-      const _app = window._boardApp;
-      if (_app) {
-        // Show test badge in header
-        const _gr = document.getElementById('authGuestRow');
-        const _ur = document.getElementById('authUserRow');
-        const _av = document.getElementById('authAvatar');
-        const _nm = document.getElementById('authUserName');
-        if (_gr) _gr.style.display = 'none';
-        if (_ur) _ur.style.display = 'flex';
-        if (_av) _av.textContent = _testName.charAt(0).toUpperCase();
-        if (_nm) _nm.textContent = _testName + ' [TEST]';
-
-        // Wire broadcast functions; save is a no-op (no DB writes)
-        _app.currentUser        = currentUser;
-        _app.scheduleSbSave     = () => {};
-        _app.broadcastNoteUpdate  = broadcastNoteUpdate;
-        _app.broadcastNoteText    = broadcastNoteText;
-        _app.broadcastNoteCreate  = broadcastNoteCreate;
-        _app.broadcastNoteDelete  = broadcastNoteDelete;
-        _app.broadcastStrokePt    = broadcastStrokePt;
-        _app.broadcastStrokeEnd   = broadcastStrokeEnd;
-        _app.joinPresenceChannel  = joinPresenceChannel;
-        _app.leavePresenceChannel = leavePresenceChannel;
-
-        // Join the board's realtime channel (broadcast works with anon Supabase key)
-        await joinPresenceChannel(_testBoard);
-      }
-      return; // skip normal auth flow
-    }
-
-    // Normal auth flow
     const { data: { session } } = await client.auth.getSession();
     if (window.opener && session) { window.close(); return; }
     await renderAuth(session);
