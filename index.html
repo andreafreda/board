@@ -304,7 +304,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.3.2</div>
+<div class="version">v.1.3.3</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -581,9 +581,18 @@ setInterval(()=>{if(state.showClock)updateClock();},30000);
 // ── BOARD SIZE & PAN ─────────────────────────────────────
 function clampPan(){
   const vw=window.innerWidth,vh=window.innerHeight;
-  const minX=Math.min(0,vw-state.boardW),minY=Math.min(0,vh-state.boardH);
-  state.panX=Math.max(minX,Math.min(0,state.panX));
-  state.panY=Math.max(minY,Math.min(0,state.panY));
+  // If the board is smaller than the viewport on an axis, auto-center it on that axis
+  // (no point panning — the whole board is already visible).
+  if(state.boardW<=vw){
+    state.panX=Math.round((vw-state.boardW)/2);
+  }else{
+    state.panX=Math.max(vw-state.boardW,Math.min(0,state.panX));
+  }
+  if(state.boardH<=vh){
+    state.panY=Math.round((vh-state.boardH)/2);
+  }else{
+    state.panY=Math.max(vh-state.boardH,Math.min(0,state.panY));
+  }
 }
 function applyPan(){board.style.transform=`translate(${state.panX}px,${state.panY}px)`;}
 function applyBoardSize(w,h){
@@ -601,8 +610,9 @@ function applyBoardSize(w,h){
 }
 function centerBoard(){
   const vw=window.innerWidth,vh=window.innerHeight;
-  state.panX=Math.min(0,Math.round((vw-state.boardW)/2));
-  state.panY=Math.min(0,Math.round((vh-state.boardH)/2));
+  // Center on each axis independently — works for boards both bigger and smaller than viewport
+  state.panX=Math.round((vw-state.boardW)/2);
+  state.panY=Math.round((vh-state.boardH)/2);
   clampPan();applyPan();save();
 }
 function showPanInd(){
@@ -734,7 +744,7 @@ function switchBoard(id){
   const b=state.boards.find(b=>b.id===id);
   loadBoardIntoState(b);
   applyBoardSize(b.width,b.height); // calls renderNotes + redrawBoard
-  renderBoardList();
+  renderBoardList();renderPresets();
   openDrawer(false);
   save();
 }
@@ -747,7 +757,7 @@ function newBoard(){
   state.activeBoardId=b.id;
   loadBoardIntoState(b);
   applyBoardSize(b.width,b.height);
-  renderBoardList();
+  renderBoardList();renderPresets();
   save();
   window._boardApp?.sbCreateBoard?.(b);
 }
@@ -775,7 +785,7 @@ function execDeleteBoard(boardId){
     loadBoardIntoState(nb);
     applyBoardSize(nb.width,nb.height);
   }
-  renderBoardList();save();
+  renderBoardList();renderPresets();save();
   window._boardApp?.sbDeleteBoard?.(boardId);
 }
 
@@ -1279,7 +1289,7 @@ window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampP
 // ── Bridge for module script ──────────────────────────────
 window._boardApp={
   state,mkBoard,syncActiveBoard,loadBoardIntoState,
-  applyBoardSize,renderBoardList,renderNotes,redrawBoard,
+  applyBoardSize,renderBoardList,renderPresets,renderNotes,redrawBoard,
   enterViewMode,exitViewMode,
   get isViewMode(){return isViewMode;},
   currentUser:null,
@@ -1541,6 +1551,7 @@ async function renderAuth(session) {
         app.loadBoardIntoState(active);
         app.applyBoardSize(active.width, active.height);
         app.renderBoardList();
+        app.renderPresets?.();
       }
     } catch (err) {
       console.error('Supabase board load failed:', err);
@@ -1581,6 +1592,7 @@ async function renderAuth(session) {
       app.loadBoardIntoState(active);
       app.applyBoardSize(active.width, active.height);
       app.renderBoardList();
+      app.renderPresets?.();
     }
   }
 }
@@ -1649,6 +1661,7 @@ logoutBtn.addEventListener('click', async () => {
       app.loadBoardIntoState(ownBoard);
       app.applyBoardSize(ownBoard.width, ownBoard.height);
       app.renderBoardList();
+      app.renderPresets?.();
       history.replaceState({}, '', location.pathname);
       // Reveal the UI (was hidden by pending-view CSS class)
       document.documentElement.classList.remove('pending-view');
