@@ -368,7 +368,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.2.0</div>
+<div class="version">v.1.2.1</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -2197,35 +2197,59 @@ async function doSbSave() {
     const ts = new Date().toISOString();
     const isOwnerBoard = !b.ownerId || b.ownerId === currentUser.id;
 
-    // Only the board owner can update board metadata
+    // ── Board metadata (owner only) ─────────────────────────
     if (isOwnerBoard) {
-      await client.from('boards').upsert({
+      const { error: be } = await client.from('boards').upsert({
         id: b.id, owner_id: currentUser.id,
         name: b.name, width: b.width, height: b.height,
         visibility: b.visibility || 'private',
         updated_at: ts,
       });
+      if (be) console.warn('doSbSave boards upsert:', be.message);
     }
 
-    // Use board owner's id so the owner can always SELECT their notes via notes_all_owner.
-    // Guests (editors) are allowed to upsert with any owner_id via notes_write_editor policy.
+    // ── Notes upsert ────────────────────────────────────────
+    // Always use board owner_id so the owner can SELECT via notes_all_owner.
+    // Guests upsert with owner_id = board_owner_id; notes_write_editor allows it.
     const notesOwnerId = b.ownerId || currentUser.id;
 
     if (b.notes.length > 0) {
-      await client.from('notes').upsert(
+      const { error: ne } = await client.from('notes').upsert(
         b.notes.map(n => ({ id: n.id, board_id: b.id, owner_id: notesOwnerId, data: n, updated_at: ts }))
       );
+      if (ne) console.warn('doSbSave notes upsert:', ne.message);
     }
-    // Delete notes removed from this board
-    const { data: existing } = await client.from('notes').select('id').eq('board_id', b.id);
-    const curIds = new Set(b.notes.map(n => n.id));
-    const toDelete = (existing || []).map(r => r.id).filter(id => !curIds.has(id));
-    if (toDelete.length) await client.from('notes').delete().in('id', toDelete);
 
-    // One strokes row per board (id = board.id as deterministic upsert key)
-    await client.from('strokes').upsert({
-      id: b.id, board_id: b.id, owner_id: notesOwnerId, data: b.strokes, updated_at: ts,
-    });
+    // ── Notes delete (owner only) ───────────────────────────
+    // Guests must NOT delete notes from DB: their local state may be missing notes
+    // created by the owner or other collaborators after the guest last synced.
+    // Only the owner has an authoritative view of which notes should exist.
+    if (isOwnerBoard) {
+      const { data: existing } = await client.from('notes').select('id').eq('board_id', b.id);
+      const curIds = new Set(b.notes.map(n => n.id));
+      const toDelete = (existing || []).map(r => r.id).filter(id => !curIds.has(id));
+      if (toDelete.length) {
+        const { error: de } = await client.from('notes').delete().in('id', toDelete);
+        if (de) console.warn('doSbSave notes delete:', de.message);
+      }
+    }
+
+    // ── Strokes (owner only) ────────────────────────────────
+    // The strokes table stores ONE row per board (full array, last-write-wins).
+    // If both owner and guest save independently, the later save overwrites the
+    // earlier one — and whichever save is missing strokes from the other user
+    // will silently delete them from the DB.
+    // Fix: only the board owner writes to the strokes row. The owner receives
+    // guest strokes via broadcast (handleStrokeEnd), accumulates them in
+    // state.strokes, and persists the unified array on their next save.
+    // Guests broadcast their strokes for live sync but do NOT write to DB.
+    if (isOwnerBoard) {
+      const { error: se } = await client.from('strokes').upsert({
+        id: b.id, board_id: b.id, owner_id: currentUser.id,
+        data: b.strokes, updated_at: ts,
+      });
+      if (se) console.warn('doSbSave strokes upsert:', se.message);
+    }
 
     setSyncStatus('saved');
     _sbRetryDelay = 0; // reset backoff on success
