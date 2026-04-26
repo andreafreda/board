@@ -304,7 +304,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.3.3</div>
+<div class="version">v.1.3.4</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -1322,8 +1322,16 @@ async function getClient() {
 }
 
 // ── Supabase board ops ────────────────────────────────────
+// IMPORTANT: always filter by owner_id. RLS allows SELECT on own boards
+// AND public boards (visibility='public') AND cooperative-member boards,
+// so a bare select('*') would leak other users' public boards into the list.
 async function sbLoadBoards(client) {
-  const { data: boards } = await client.from('boards').select('*').order('created_at');
+  if (!currentUser) return null;
+  const { data: boards } = await client
+    .from('boards')
+    .select('*')
+    .eq('owner_id', currentUser.id)
+    .order('created_at');
   if (!boards?.length) return null;
   const loaded = await Promise.all(boards.map(async b => {
     const [{ data: notes }, { data: strokes }] = await Promise.all([
@@ -1332,7 +1340,8 @@ async function sbLoadBoards(client) {
     ]);
     return {
       id: b.id, name: b.name,
-      width: b.width || 1366, height: b.height || 768,
+      width: Number(b.width) || 1366, height: Number(b.height) || 768,
+      visibility: b.visibility || 'private',
       panX: 0, panY: 0,
       notes: (notes || []).map(r => r.data),
       strokes: strokes?.length ? (strokes[0].data || []) : [],
@@ -1347,6 +1356,7 @@ async function sbCreateBoard(board) {
   await client.from('boards').upsert({
     id: board.id, owner_id: currentUser.id,
     name: board.name, width: board.width, height: board.height,
+    visibility: board.visibility || 'private',
     updated_at: new Date().toISOString(),
   });
 }
@@ -1354,13 +1364,16 @@ async function sbCreateBoard(board) {
 async function sbUpdateBoardName(id, name) {
   const client = await getClient();
   if (!currentUser) return;
-  await client.from('boards').update({ name, updated_at: new Date().toISOString() }).eq('id', id);
+  await client.from('boards')
+    .update({ name, updated_at: new Date().toISOString() })
+    .eq('id', id).eq('owner_id', currentUser.id);
 }
 
 async function sbDeleteBoardFn(boardId) {
   const client = await getClient();
   if (!currentUser) return;
-  await client.from('boards').delete().eq('id', boardId);
+  // Also explicit owner_id filter — RLS would block anyway, but be defensive.
+  await client.from('boards').delete().eq('id', boardId).eq('owner_id', currentUser.id);
 }
 
 async function updateBoardVisibility(boardId, vis) {
