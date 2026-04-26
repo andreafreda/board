@@ -163,6 +163,9 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   gap:4px;cursor:ns-resize;user-select:none;touch-action:none;
   margin-top:-90px;background:var(--surface);border:1px solid var(--border);
   border-radius:14px;padding:6px 8px 4px;box-shadow:var(--ssoft);}
+/* Wrap the track in extra padding so the round thumb (20px) never escapes the
+   pill when at 0% / 100% — half-thumb (10px) needs room above and below the track. */
+.vslider-track{margin:10px 0;}
 .vslider-track{width:8px;height:72px;
   background:color-mix(in srgb,var(--border) 80%,transparent);
   border-radius:999px;position:relative;}
@@ -304,7 +307,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.4.0</div>
+<div class="version">v.1.4.1</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
