@@ -368,7 +368,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.1.9</div>
+<div class="version">v.1.2.0</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -1277,6 +1277,8 @@ function redrawBoard(){
     s.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();
   });
   ctx.globalCompositeOperation='source-over';
+  // Re-draw any in-progress remote strokes so they survive clearRect
+  window._boardApp?.onAfterRedrawBoard?.();
 }
 function sketchPos(e){
   const r=sketch.getBoundingClientRect();
@@ -1528,7 +1530,7 @@ window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{clampP
 // ── Bridge for module script ──────────────────────────────
 window._boardApp={
   state,mkBoard,syncActiveBoard,loadBoardIntoState,
-  applyBoardSize,renderBoardList,renderNotes,redrawBoard,
+  applyBoardSize,renderBoardList,renderNotes,redrawBoard,redrawNoteCanvas,
   renderMembersSection,switchBoard,
   enterViewMode,exitViewMode,
   makeNoteEl:makeNote,
@@ -1544,6 +1546,7 @@ window._boardApp={
   broadcastNoteUpdate:null,broadcastNoteText:null,
   broadcastNoteCreate:null,broadcastNoteDelete:null,
   broadcastStrokePt:null,broadcastStrokeEnd:null,
+  onAfterRedrawBoard:null,
 };
 
 })();
@@ -1941,6 +1944,7 @@ async function joinPresenceChannel(boardId) {
     .subscribe(async status => {
       if (status === 'SUBSCRIBED') {
         await _presenceChannel.track({ userId: myKey, name, color, boardId, joinedAt: Date.now() });
+        installRedrawHook(); // activate after-redraw hook for live remote strokes
       }
     });
 }
@@ -1956,6 +1960,33 @@ async function leavePresenceChannel() {
   }
   renderPresenceStack([]);
   clearAllCursors();
+  _liveStrokes.clear();
+  const app = window._boardApp;
+  if (app) app.onAfterRedrawBoard = null;
+}
+
+// Hook into redrawBoard so in-progress remote strokes survive clearRect calls
+function installRedrawHook() {
+  const app = window._boardApp;
+  if (!app) return;
+  app.onAfterRedrawBoard = () => {
+    if (!_liveStrokes.size) return;
+    const canvas = document.getElementById('sketch');
+    if (!canvas) return;
+    const c = canvas.getContext('2d');
+    _liveStrokes.forEach(live => {
+      if (live.type !== 'board' || live.points.length < 2) return;
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      c.globalCompositeOperation = live.eraser ? 'destination-out' : 'source-over';
+      c.strokeStyle = live.eraser ? 'rgba(0,0,0,1)' : (live.color || '#1f2328');
+      c.lineWidth = live.size || 7;
+      c.beginPath();
+      c.moveTo(live.points[0].x, live.points[0].y);
+      for (let i = 1; i < live.points.length; i++) c.lineTo(live.points[i].x, live.points[i].y);
+      c.stroke();
+      c.globalCompositeOperation = 'source-over';
+    });
+  };
 }
 
 // Clean up on page unload / tab hidden
@@ -2132,9 +2163,19 @@ function handleStrokeEnd({ strokeId, type, noteId }) {
     const stroke = { points: live.points, color: live.color, size: live.size, eraser: live.eraser };
     if (type === 'board') {
       app.state.strokes.push(stroke);
+      _liveStrokes.delete(strokeId);
+      app.redrawBoard(); // re-render with committed stroke
+      return;
     } else if (type === 'note' && noteId) {
       const note = app.state.notes.find(n => n.id === noteId);
-      if (note) { if (!note.noteStrokes) note.noteStrokes = []; note.noteStrokes.push(stroke); }
+      if (note) {
+        if (!note.noteStrokes) note.noteStrokes = [];
+        note.noteStrokes.push(stroke);
+        _liveStrokes.delete(strokeId);
+        const nc = document.querySelector(`.note[data-id="${noteId}"] canvas.note-canvas`);
+        if (nc) app.redrawNoteCanvas?.(nc, note);
+        return;
+      }
     }
   }
   _liveStrokes.delete(strokeId);
