@@ -368,7 +368,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.2.1</div>
+<div class="version">v.1.2.2</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -2499,6 +2499,55 @@ logoutBtn.addEventListener('click', async () => {
       // to unauthenticated users just like private ones.
       // Do NOT strip the URL: if the user logs in and is a member,
       // renderAuth will switch to this board after loading boards.
+    }
+
+    // ── TEST MODE — ?test=Name&board=UUID ─────────────────────
+    // Joins presence + enables broadcast without any Google login.
+    // DB reads/writes are skipped (local board state only).
+    // Usage: open a second tab with ?test=Alice&board=<board-id>
+    const _testName  = new URLSearchParams(location.search).get('test');
+    const _testBoard = new URLSearchParams(location.search).get('board');
+    if (_testName && _testBoard) {
+      // Stable UUID derived from name so cursor colour is consistent across refreshes
+      let _th = 5381;
+      for (let i = 0; i < _testName.length; i++) _th = (Math.imul(33, _th) ^ _testName.charCodeAt(i)) >>> 0;
+      const _hex = _th.toString(16).padStart(8,'0');
+      const _fakeId = `${_hex}-test-4est-test-${_hex}${_hex.slice(0,4)}`;
+
+      currentUser = {
+        id: _fakeId,
+        email: _testName.toLowerCase().replace(/\s+/g,'.') + '@test.local',
+        user_metadata: { full_name: _testName },
+      };
+
+      const _app = window._boardApp;
+      if (_app) {
+        // Show test badge in header
+        const _gr = document.getElementById('authGuestRow');
+        const _ur = document.getElementById('authUserRow');
+        const _av = document.getElementById('authAvatar');
+        const _nm = document.getElementById('authUserName');
+        if (_gr) _gr.style.display = 'none';
+        if (_ur) _ur.style.display = 'flex';
+        if (_av) _av.textContent = _testName.charAt(0).toUpperCase();
+        if (_nm) _nm.textContent = _testName + ' [TEST]';
+
+        // Wire broadcast functions; save is a no-op (no DB writes)
+        _app.currentUser        = currentUser;
+        _app.scheduleSbSave     = () => {};
+        _app.broadcastNoteUpdate  = broadcastNoteUpdate;
+        _app.broadcastNoteText    = broadcastNoteText;
+        _app.broadcastNoteCreate  = broadcastNoteCreate;
+        _app.broadcastNoteDelete  = broadcastNoteDelete;
+        _app.broadcastStrokePt    = broadcastStrokePt;
+        _app.broadcastStrokeEnd   = broadcastStrokeEnd;
+        _app.joinPresenceChannel  = joinPresenceChannel;
+        _app.leavePresenceChannel = leavePresenceChannel;
+
+        // Join the board's realtime channel (broadcast works with anon Supabase key)
+        await joinPresenceChannel(_testBoard);
+      }
+      return; // skip normal auth flow
     }
 
     // Normal auth flow
