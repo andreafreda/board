@@ -26,6 +26,11 @@ let _authHooks = {
   sbDeleteBoard:    () => {},
   sbUpdateBoardName: () => {},
   sbUpdateVisibility: () => {},
+  // Members CRUD (commit 1: cooperative)
+  sbListMembers:       async () => [],
+  sbAddMember:         async () => {},
+  sbUpdateMemberRole:  async () => {},
+  sbRemoveMember:      async () => {},
 };
 export function setAuthHooks(h) { _authHooks = { ..._authHooks, ...h }; }
 
@@ -108,10 +113,20 @@ export function renderBoardList() {
     return;
   }
 
+  // Visibility cycle: private → public → cooperative → private
+  const VIS_CYCLE = { private: 'public', public: 'cooperative', cooperative: 'private' };
+  const VIS_ICON  = { private: '🔒', public: '🌐', cooperative: '👥' };
+  const VIS_TITLE = {
+    private: 'Privato — click per condividere via link',
+    public:  'Pubblico (link sola lettura) — click per cooperativa',
+    cooperative: 'Cooperativa (membri editor) — click per privato',
+  };
+
   state.boards.forEach((b) => {
     if (!b.visibility) b.visibility = 'private';
     const isActive = b.id === state.activeBoardId;
-    const isPublic = b.visibility === 'public';
+    const isMine   = (b.myRole || 'owner') === 'owner';
+    const isShareable = b.visibility === 'public' || b.visibility === 'cooperative';
 
     const item = document.createElement('div');
     item.className = 'd-board' + (isActive ? ' active' : '');
@@ -122,43 +137,55 @@ export function renderBoardList() {
     name.className = 'd-bname';
     name.textContent = b.name; name.title = b.name;
 
-    const visBtn = document.createElement('button');
-    visBtn.type = 'button';
-    visBtn.className = 'vis-btn' + (isPublic ? ' pub' : '');
-    visBtn.textContent = isPublic ? '🌐' : '🔒';
-    visBtn.title = isPublic ? 'Public — click to make private' : 'Private — click to share';
-    visBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const newVis = isPublic ? 'private' : 'public';
-      b.visibility = newVis;
-      save();
-      _authHooks.sbUpdateVisibility?.(b.id, newVis);
-      renderBoardList();
-    });
+    // Visibility cycle button — owner only
+    let visBtn = null;
+    if (isMine) {
+      visBtn = document.createElement('button');
+      visBtn.type = 'button';
+      visBtn.className = 'vis-btn' + (b.visibility !== 'private' ? ' pub' : '');
+      visBtn.textContent = VIS_ICON[b.visibility];
+      visBtn.title = VIS_TITLE[b.visibility];
+      visBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newVis = VIS_CYCLE[b.visibility];
+        b.visibility = newVis;
+        save();
+        _authHooks.sbUpdateVisibility?.(b.id, newVis);
+        renderBoardList();
+      });
+    } else {
+      // Non-owner: show role badge instead
+      visBtn = document.createElement('span');
+      visBtn.className = 'vis-btn pub';
+      visBtn.textContent = b.myRole === 'editor' ? '✏️' : '👁';
+      visBtn.title = b.myRole === 'editor' ? 'Membro editor' : 'Membro viewer';
+    }
 
     const acts = document.createElement('div'); acts.className = 'd-acts';
-    const mkbib = (icon, cls, title, cb) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'd-bib ' + cls;
-      btn.title = title;
-      btn.textContent = icon;
-      btn.addEventListener('click', (e) => { e.stopPropagation(); cb(btn); });
-      return btn;
-    };
-    acts.append(
-      mkbib('✏️', '',    'Rename',    () => startRenameBoard(b, name)),
-      mkbib('⧉',  '',    'Duplicate', () => dupBoard(b)),
-      ...(state.boards.length > 1
-          ? [mkbib('✕', 'del', 'Delete', (btn) => confirmDeleteBoard(b.id, btn))]
-          : []),
-    );
+    if (isMine) {
+      const mkbib = (icon, cls, title, cb) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'd-bib ' + cls;
+        btn.title = title;
+        btn.textContent = icon;
+        btn.addEventListener('click', (e) => { e.stopPropagation(); cb(btn); });
+        return btn;
+      };
+      acts.append(
+        mkbib('✏️', '', 'Rename',    () => startRenameBoard(b, name)),
+        mkbib('⧉',  '', 'Duplicate', () => dupBoard(b)),
+        ...(state.boards.filter((bd) => (bd.myRole || 'owner') === 'owner').length > 1
+            ? [mkbib('✕', 'del', 'Delete', (btn) => confirmDeleteBoard(b.id, btn))]
+            : []),
+      );
+    }
 
     item.append(dot, name, visBtn, acts);
     listEl.appendChild(item);
 
-    // Share-link row when board is public
-    if (isPublic) {
+    // Share-link row + members panel for shareable boards I own
+    if (isMine && isShareable) {
       const shareRow = document.createElement('div');
       shareRow.className = 'd-share-row';
       const copyBtn = document.createElement('button');
@@ -182,8 +209,98 @@ export function renderBoardList() {
       });
       shareRow.appendChild(copyBtn);
       listEl.appendChild(shareRow);
+
+      if (b.visibility === 'cooperative') {
+        listEl.appendChild(buildMembersPanel(b));
+      }
     }
   });
+}
+
+// ── Members panel (cooperative boards, owner-only) ──────────────────
+function buildMembersPanel(board) {
+  const wrap = document.createElement('div');
+  wrap.className = 'd-members';
+  wrap.style.cssText = 'padding:.25rem .35rem .35rem;display:flex;flex-direction:column;gap:.3rem;';
+  wrap.addEventListener('click', (e) => e.stopPropagation());
+
+  // Add row
+  const addRow = document.createElement('div');
+  addRow.style.cssText = 'display:flex;gap:4px;align-items:center;';
+  const inp = document.createElement('input');
+  inp.type = 'email';
+  inp.placeholder = 'email membro…';
+  inp.style.cssText = 'flex:1;font-size:.78rem;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);';
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = '+';
+  addBtn.style.cssText = 'width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:.95rem;font-weight:700;';
+  addBtn.addEventListener('click', async () => {
+    const email = inp.value.trim().toLowerCase();
+    if (!email) return;
+    try {
+      await _authHooks.sbAddMember(board.id, email, 'editor');
+      inp.value = '';
+      refresh();
+    } catch (err) { alert('Errore: ' + err.message); }
+  });
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addBtn.click(); });
+  addRow.append(inp, addBtn);
+  wrap.appendChild(addRow);
+
+  // Members list (loaded async)
+  const list = document.createElement('div');
+  list.style.cssText = 'display:flex;flex-direction:column;gap:2px;';
+  wrap.appendChild(list);
+
+  async function refresh() {
+    list.innerHTML = '<div style="font-size:.7rem;opacity:.55;">caricamento…</div>';
+    const members = await _authHooks.sbListMembers(board.id);
+    list.innerHTML = '';
+    if (!members.length) {
+      list.innerHTML = '<div style="font-size:.7rem;opacity:.55;">Nessun membro invitato</div>';
+      return;
+    }
+    members.forEach((m) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:.74rem;';
+      const em = document.createElement('span');
+      em.textContent = m.email; em.title = m.email;
+      em.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+      const roleSel = document.createElement('select');
+      roleSel.style.cssText = 'font-size:.7rem;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);';
+      ['editor','viewer'].forEach((r) => {
+        const o = document.createElement('option');
+        o.value = r; o.textContent = r === 'editor' ? '✏️ editor' : '👁 viewer';
+        if (r === m.role) o.selected = true;
+        roleSel.appendChild(o);
+      });
+      roleSel.addEventListener('change', async () => {
+        try { await _authHooks.sbUpdateMemberRole(board.id, m.email, roleSel.value); }
+        catch (err) { alert('Errore: ' + err.message); refresh(); }
+      });
+
+      const rmBtn = document.createElement('button');
+      rmBtn.type = 'button';
+      rmBtn.textContent = '✕';
+      rmBtn.title = 'Rimuovi';
+      rmBtn.style.cssText = 'width:20px;height:20px;border:none;background:transparent;color:var(--muted);font-size:.7rem;cursor:pointer;border-radius:4px;';
+      rmBtn.addEventListener('mouseenter', () => rmBtn.style.color = 'var(--danger)');
+      rmBtn.addEventListener('mouseleave', () => rmBtn.style.color = 'var(--muted)');
+      rmBtn.addEventListener('click', async () => {
+        if (!confirm('Rimuovere ' + m.email + '?')) return;
+        try { await _authHooks.sbRemoveMember(board.id, m.email); refresh(); }
+        catch (err) { alert('Errore: ' + err.message); }
+      });
+
+      row.append(em, roleSel, rmBtn);
+      list.appendChild(row);
+    });
+  }
+  refresh();
+
+  return wrap;
 }
 
 // ── Per-board operations ────────────────────────────────────────────

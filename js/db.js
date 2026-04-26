@@ -24,30 +24,58 @@ export async function getClient() {
 // RLS *also* allows SELECT on visibility='public' rows, so a bare
 // select('*') would leak public boards from other users into the list.
 
-export async function sbLoadBoards(client, ownerId) {
+export async function sbLoadBoards(client, ownerId, email) {
   if (!ownerId) return null;
-  const { data: boards } = await client
-    .from('boards')
-    .select('*')
-    .eq('owner_id', ownerId)
-    .order('created_at');
-  if (!boards?.length) return null;
 
-  // Hydrate notes + strokes for every board in parallel
-  return Promise.all(boards.map(async (b) => {
+  // 1) The user's own boards (any visibility)
+  const { data: ownBoards } = await client
+    .from('boards').select('*').eq('owner_id', ownerId).order('created_at');
+
+  // 2) Cooperative boards the user is a member of (by email)
+  let memberRows = [];
+  if (email) {
+    const { data: m } = await client
+      .from('board_members').select('board_id,role').eq('email', email);
+    memberRows = m || [];
+  }
+
+  let coopBoards = [];
+  if (memberRows.length) {
+    const ids = memberRows.map((r) => r.board_id);
+    const { data: cb } = await client
+      .from('boards').select('*').in('id', ids).eq('visibility', 'cooperative');
+    coopBoards = cb || [];
+  }
+
+  // Tag each cooperative board with the current user's role
+  const roleByBoard = new Map(memberRows.map((r) => [r.board_id, r.role]));
+
+  const all = [
+    ...(ownBoards || []).map((b) => ({ ...b, _myRole: 'owner' })),
+    ...coopBoards.map((b) => ({ ...b, _myRole: roleByBoard.get(b.id) || 'viewer' })),
+  ];
+  if (!all.length) return null;
+
+  // Hydrate notes + strokes for every board in parallel.
+  // Cooperative boards may have MANY strokes rows (one per writer) —
+  // we flatten them all into a single combined array.
+  return Promise.all(all.map(async (b) => {
     const [{ data: notes }, { data: strokes }] = await Promise.all([
       client.from('notes').select('id,data').eq('board_id', b.id),
-      client.from('strokes').select('data').eq('board_id', b.id).limit(1),
+      client.from('strokes').select('data,owner_id').eq('board_id', b.id),
     ]);
+    const flatStrokes = (strokes || []).flatMap((r) => r.data || []);
     return {
       id: b.id,
       name: b.name,
       width:  Number(b.width)  || 1366,
       height: Number(b.height) || 768,
       visibility: b.visibility || 'private',
+      ownerId: b.owner_id,
+      myRole:  b._myRole,           // 'owner' | 'editor' | 'viewer'
       panX: 0, panY: 0,
       notes:   (notes || []).map((r) => r.data),
-      strokes: strokes?.length ? (strokes[0].data || []) : [],
+      strokes: flatStrokes,
     };
   }));
 }
@@ -82,38 +110,86 @@ export async function sbUpdateVisibility(client, ownerId, boardId, vis) {
     .eq('id', boardId).eq('owner_id', ownerId);
 }
 
-// ── doSbSave: persist the active board + its notes + strokes row ────
-export async function sbSaveActiveBoard(client, ownerId, board) {
-  if (!ownerId || !board) return;
+// ── doSbSave: persist the active board + its notes + the writer's strokes row ─
+//
+// `writerId` is the user doing the save (auth.uid). For private/public boards
+// it's the owner. For cooperative boards it's whichever editor is saving.
+//
+// Strokes are now stored one row per (board_id, owner_id) — each writer keeps
+// their own row to avoid last-write-wins between cooperative editors.
+//
+// `role` controls what we save:
+//   'owner'  → the boards row itself (name/size/visibility) AND notes AND strokes
+//   'editor' → notes (per-row) + their own strokes row
+//   'viewer' → nothing (defensive — viewers shouldn't trigger save)
+//
+// `myStrokes` is just the writer's strokes (those they drew this session) — the
+// caller must split combined-board strokes into "mine" vs "remote" before save.
+// For now (commit 1, no realtime yet) callers pass board.strokes as myStrokes
+// because we have no way to distinguish — last-write-wins on strokes still
+// possible until commit 2 wires per-user buffers via broadcast.
+export async function sbSaveActiveBoard(client, writerId, board, role = 'owner', myStrokes) {
+  if (!writerId || !board) return;
+  if (role === 'viewer') return;
   const ts = new Date().toISOString();
+  const strokesToWrite = (myStrokes ?? board.strokes) || [];
 
-  await client.from('boards').upsert({
-    id: board.id, owner_id: ownerId,
-    name: board.name, width: board.width, height: board.height,
-    visibility: board.visibility || 'private',
-    updated_at: ts,
-  });
+  if (role === 'owner') {
+    await client.from('boards').upsert({
+      id: board.id, owner_id: writerId,
+      name: board.name, width: board.width, height: board.height,
+      visibility: board.visibility || 'private',
+      updated_at: ts,
+    });
+  }
 
   if (board.notes.length > 0) {
     await client.from('notes').upsert(
       board.notes.map((n) => ({
-        id: n.id, board_id: board.id, owner_id: ownerId,
+        id: n.id, board_id: board.id, owner_id: writerId,
         data: n, updated_at: ts,
       })),
     );
   }
 
-  // Delete notes that the client has removed from this board
-  const { data: existing } = await client.from('notes').select('id').eq('board_id', board.id);
-  const curIds = new Set(board.notes.map((n) => n.id));
-  const toDelete = (existing || []).map((r) => r.id).filter((id) => !curIds.has(id));
-  if (toDelete.length) await client.from('notes').delete().in('id', toDelete);
+  // Owner cleans up notes deleted from the board. Editors don't bulk-delete —
+  // they can delete individual notes via the UI which calls the policy directly.
+  if (role === 'owner') {
+    const { data: existing } = await client.from('notes').select('id').eq('board_id', board.id);
+    const curIds = new Set(board.notes.map((n) => n.id));
+    const toDelete = (existing || []).map((r) => r.id).filter((id) => !curIds.has(id));
+    if (toDelete.length) await client.from('notes').delete().in('id', toDelete);
+  }
 
-  // One strokes row per board (id = board.id is the upsert key)
+  // One strokes row per (board_id, owner_id) — onConflict on the unique pair
   await client.from('strokes').upsert({
-    id: board.id, board_id: board.id, owner_id: ownerId,
-    data: board.strokes, updated_at: ts,
-  });
+    board_id: board.id, owner_id: writerId,
+    data: strokesToWrite, updated_at: ts,
+  }, { onConflict: 'board_id,owner_id' });
+}
+
+// ── Members ─────────────────────────────────────────────────────────
+export async function sbListMembers(client, boardId) {
+  const { data } = await client
+    .from('board_members').select('email,role,added_at').eq('board_id', boardId).order('added_at');
+  return data || [];
+}
+
+export async function sbAddMember(client, boardId, email, role = 'editor') {
+  const e = String(email || '').trim().toLowerCase();
+  if (!e) throw new Error('Email vuota');
+  return client.from('board_members').upsert({
+    board_id: boardId, email: e, role,
+  }, { onConflict: 'board_id,email' });
+}
+
+export async function sbUpdateMemberRole(client, boardId, email, role) {
+  return client.from('board_members')
+    .update({ role }).eq('board_id', boardId).eq('email', email);
+}
+
+export async function sbRemoveMember(client, boardId, email) {
+  return client.from('board_members').delete().eq('board_id', boardId).eq('email', email);
 }
 
 // ── Public board fetch (for ?board=<uuid> view mode) ────────────────

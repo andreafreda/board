@@ -13,6 +13,7 @@ import {
   getClient,
   sbLoadBoards, sbCreateBoard, sbUpdateBoardName,
   sbDeleteBoard, sbUpdateVisibility, sbSaveActiveBoard,
+  sbListMembers, sbAddMember, sbUpdateMemberRole, sbRemoveMember,
 } from './db.js';
 
 const GOOGLE_SVG = `<svg width="20" height="20" viewBox="0 0 24 24">
@@ -34,7 +35,10 @@ async function doSbSave() {
   syncActiveBoard();
   const b = state.boards.find((bd) => bd.id === state.activeBoardId);
   if (!b) return;
-  await sbSaveActiveBoard(client, currentUser.id, b);
+  // Defensive role default: if myRole is missing the board is treated as our
+  // own (we'd never have loaded it otherwise), so 'owner'.
+  const role = b.myRole || 'owner';
+  await sbSaveActiveBoard(client, currentUser.id, b, role);
 }
 function scheduleSbSave() {
   clearTimeout(sbSaveTimer);
@@ -90,8 +94,9 @@ async function loadCloudBoardsForUser(session) {
     const client = await getClient();
 
     // Step 1: load the user's existing cloud boards FIRST so we know
-    //         what already exists before deciding what to push.
-    let boards = await sbLoadBoards(client, session.user.id);
+    //         what already exists before deciding what to push. This now
+    //         also includes cooperative boards the user is a member of.
+    let boards = await sbLoadBoards(client, session.user.id, session.user.email);
     const cloudIds = new Set((boards || []).map((b) => b.id));
 
     // Step 2: push the active local board only if it has content AND
@@ -111,8 +116,8 @@ async function loadCloudBoardsForUser(session) {
 
       if (!ownedByOther) {
         savedGuestBoardId = gb.id;
-        await sbSaveActiveBoard(client, session.user.id, gb);
-        boards = await sbLoadBoards(client, session.user.id);
+        await sbSaveActiveBoard(client, session.user.id, gb, 'owner');
+        boards = await sbLoadBoards(client, session.user.id, session.user.email);
       }
     }
 
@@ -121,6 +126,7 @@ async function loadCloudBoardsForUser(session) {
       const d = mkBoard();
       await sbCreateBoard(client, session.user.id, d);
       boards = [d];
+      boards[0].myRole = 'owner';
     }
 
     // Step 4: install boards as the new state and render
@@ -177,6 +183,11 @@ export function initAuth() {
     sbDeleteBoard:      async (id) => { const c = await getClient(); return sbDeleteBoard(c, currentUser?.id, id); },
     sbUpdateBoardName:  async (id, name) => { const c = await getClient(); return sbUpdateBoardName(c, currentUser?.id, id, name); },
     sbUpdateVisibility: async (id, vis)  => { const c = await getClient(); return sbUpdateVisibility(c, currentUser?.id, id, vis); },
+    // Members CRUD
+    sbListMembers:      async (id)              => { const c = await getClient(); return sbListMembers(c, id); },
+    sbAddMember:        async (id, email, role) => { const c = await getClient(); return sbAddMember(c, id, email, role); },
+    sbUpdateMemberRole: async (id, email, role) => { const c = await getClient(); return sbUpdateMemberRole(c, id, email, role); },
+    sbRemoveMember:     async (id, email)       => { const c = await getClient(); return sbRemoveMember(c, id, email); },
   });
 
   dom.googleBtn.addEventListener('click', async () => {
