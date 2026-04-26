@@ -368,7 +368,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.1.8</div>
+<div class="version">v.1.1.9</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -1852,6 +1852,8 @@ let _lastCursorSend = 0;
 const _CURSOR_MS = 33;
 // Stable anon key so guest cursors stay consistent within a session
 const _anonKey = 'anon-' + Math.random().toString(36).slice(2);
+// My display name — set when joining presence channel
+let _myPresenceName = 'Guest';
 
 function sendCursor(clientX, clientY) {
   if (!_presenceChannel || document.hidden) return;
@@ -1863,7 +1865,7 @@ function sendCursor(clientX, clientY) {
   const bx = Math.round(clientX - (app.state.panX || 0));
   const by = Math.round(clientY - (app.state.panY || 0));
   _presenceChannel.send({ type: 'broadcast', event: 'cursor',
-    payload: { userId: currentUser?.id ?? _anonKey, x: bx, y: by } });
+    payload: { userId: currentUser?.id ?? _anonKey, x: bx, y: by, name: _myPresenceName } });
 }
 
 // Global pointermove → send cursor (only active when channel is open)
@@ -1879,6 +1881,7 @@ async function joinPresenceChannel(boardId) {
 
   const meta  = user?.user_metadata ?? {};
   const name  = meta.full_name ?? meta.name ?? user?.email?.split('@')[0] ?? 'Guest';
+  _myPresenceName = name;
   const myKey = user?.id ?? _anonKey;
   const color = presenceColor(myKey);
 
@@ -1901,9 +1904,11 @@ async function joinPresenceChannel(boardId) {
     // ── Cursor broadcast → remote cursor layer ────────────
     .on('broadcast', { event: 'cursor' }, ({ payload }) => {
       if (!payload || payload.userId === myKey) return;
+      // Name comes directly from the payload (set at broadcast time).
+      // Fall back to presence state in case this is an older client.
       const ps = _presenceChannel.presenceState();
       const peerPayload = Object.values(ps).flat().find(p => p.userId === payload.userId);
-      const peerName  = peerPayload?.name ?? 'Guest';
+      const peerName  = payload.name ?? peerPayload?.name ?? 'Guest';
       const peerColor = presenceColor(payload.userId);
       upsertRemoteCursor(payload.userId, payload.x, payload.y, peerName, peerColor);
     })
@@ -2161,9 +2166,13 @@ async function doSbSave() {
       });
     }
 
+    // Use board owner's id so the owner can always SELECT their notes via notes_all_owner.
+    // Guests (editors) are allowed to upsert with any owner_id via notes_write_editor policy.
+    const notesOwnerId = b.ownerId || currentUser.id;
+
     if (b.notes.length > 0) {
       await client.from('notes').upsert(
-        b.notes.map(n => ({ id: n.id, board_id: b.id, owner_id: currentUser.id, data: n, updated_at: ts }))
+        b.notes.map(n => ({ id: n.id, board_id: b.id, owner_id: notesOwnerId, data: n, updated_at: ts }))
       );
     }
     // Delete notes removed from this board
@@ -2174,7 +2183,7 @@ async function doSbSave() {
 
     // One strokes row per board (id = board.id as deterministic upsert key)
     await client.from('strokes').upsert({
-      id: b.id, board_id: b.id, owner_id: currentUser.id, data: b.strokes, updated_at: ts,
+      id: b.id, board_id: b.id, owner_id: notesOwnerId, data: b.strokes, updated_at: ts,
     });
 
     setSyncStatus('saved');
