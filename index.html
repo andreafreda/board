@@ -274,7 +274,22 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   pointer-events:none;border-radius:0 0 inherit inherit;z-index:4;}
 .note-canvas.draw-on{pointer-events:auto;cursor:crosshair;}
 .note-canvas.eraser-on{pointer-events:auto;cursor:cell;}
+
+/* Pre-view-mode: hide editing UI and stale board content while loading shared board */
+html.pending-view .corner,
+html.pending-view .drawer,
+html.pending-view .version,
+html.pending-view #board,
+html.pending-view #notesLayer,
+html.pending-view .pan-ind { visibility: hidden !important; }
 </style>
+<script>
+// Run before the main IIFE so the user never sees a flash of stale board/list data
+// when opening a shared link (?board=<uuid>).
+if (new URLSearchParams(location.search).get('board')) {
+  document.documentElement.classList.add('pending-view');
+}
+</script>
 </head>
 <body>
 
@@ -289,7 +304,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.3.1</div>
+<div class="version">v.1.3.2</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -530,7 +545,8 @@ function enterViewMode(board){
   state.notes=board.notes||[];state.strokes=board.strokes||[];
   board.style&&board.style; // noop (board is data, not DOM)
   applyBoardSize(board.width||1366,board.height||768);
-  // Hide all editing UI
+  // Reveal the board (was hidden by the pending-view CSS class) and hide editing UI
+  document.documentElement.classList.remove('pending-view');
   document.querySelector('.corner').style.cssText='display:none!important';
   // Show view banner
   const nm=$('viewBoardName');if(nm)nm.textContent=board.name||'Board';
@@ -1452,41 +1468,57 @@ async function renderAuth(session) {
     try {
       const client = await getClient();
 
-      // ── Step 1: upsert the current guest board if it has content ──
-      // This handles BOTH first-login and returning-user-with-offline-edits scenarios.
-      // We always push local content to Supabase before loading, so offline edits
-      // are never lost regardless of whether the user has existing cloud boards.
+      // ── Step 1: load the user's existing Supabase boards FIRST ──
+      // This way we know what already exists in the cloud and avoid trying to
+      // upsert a stale local board that actually belongs to another user
+      // (which would silently fail with a 403 and confuse the UI).
+      let boards = await sbLoadBoards(client);
+      const cloudIds = new Set((boards || []).map(b => b.id));
+
+      // ── Step 2: push the active local board only if it has content AND
+      //           is not already owned by someone else in the cloud. ──
       let savedGuestBoardId = null;
       if (app) {
         app.syncActiveBoard?.();
         const gb = app.state.boards?.find(b => b.id === app.state.activeBoardId)
                 || app.state.boards?.[0];
         const hasContent = gb && ((gb.notes?.length > 0) || (gb.strokes?.length > 0));
-        if (hasContent) {
-          savedGuestBoardId = gb.id;
-          const ts = new Date().toISOString();
-          // upsert: insert if new board, update if returning user's board
-          await client.from('boards').upsert({
-            id: gb.id, owner_id: session.user.id,
-            name: gb.name || 'Board', width: gb.width || 1366, height: gb.height || 768,
-            updated_at: ts,
-          });
-          if (gb.notes.length) {
-            await client.from('notes').upsert(
-              gb.notes.map(n => ({
-                id: n.id, board_id: gb.id, owner_id: session.user.id, data: n, updated_at: ts,
-              }))
-            );
+        // Skip upsert if this id is already a cloud board owned by us
+        // (sbLoadBoards already loaded it, no need to push again — doSbSave will handle saves)
+        // OR if the id corresponds to a board that exists in DB but isn't ours
+        // (would 403). We detect "exists in DB but not ours" by checking the table directly.
+        if (hasContent && !cloudIds.has(gb.id)) {
+          // Defensive: check if id exists in DB at all (would be a public/cooperative board
+          // not owned by us — RLS lets us SELECT it but not UPDATE).
+          const { data: existing } = await client
+            .from('boards').select('id,owner_id').eq('id', gb.id).maybeSingle();
+          const ownedByOther = existing && existing.owner_id !== session.user.id;
+          if (!ownedByOther) {
+            savedGuestBoardId = gb.id;
+            const ts = new Date().toISOString();
+            await client.from('boards').upsert({
+              id: gb.id, owner_id: session.user.id,
+              name: gb.name || 'Board', width: gb.width || 1366, height: gb.height || 768,
+              updated_at: ts,
+            });
+            if (gb.notes.length) {
+              await client.from('notes').upsert(
+                gb.notes.map(n => ({
+                  id: n.id, board_id: gb.id, owner_id: session.user.id, data: n, updated_at: ts,
+                }))
+              );
+            }
+            await client.from('strokes').upsert({
+              id: gb.id, board_id: gb.id, owner_id: session.user.id,
+              data: gb.strokes || [], updated_at: ts,
+            });
+            // Reload boards now that we've inserted a new one
+            boards = await sbLoadBoards(client);
           }
-          await client.from('strokes').upsert({
-            id: gb.id, board_id: gb.id, owner_id: session.user.id,
-            data: gb.strokes || [], updated_at: ts,
-          });
         }
       }
 
-      // ── Step 2: load all boards (now includes the just-saved guest board) ──
-      let boards = await sbLoadBoards(client);
+      // ── Step 3: ensure the user has at least one board ──
       if (!boards?.length) {
         // Empty account with empty guest board: create a fresh default board
         const d = app?.mkBoard?.() ?? {
@@ -1606,17 +1638,28 @@ logoutBtn.addEventListener('click', async () => {
   // If a board ID is in the URL, decide what to do after auth is settled.
   if (urlBoard) {
     const app = window._boardApp;
-    const ownBoard = app?.state.boards?.find(b => b.id === urlBoard);
+    // Only treat as "owned" if the user is actually logged in AND the id is in their
+    // Supabase boards (not in stale localStorage). Otherwise enter view mode.
+    const ownBoard = (app?.currentUser)
+      ? app.state.boards?.find(b => b.id === urlBoard)
+      : null;
     if (ownBoard) {
-      // The user owns this board — just activate it and strip the URL param.
+      // The user owns this board — activate it directly and strip the URL param.
       app.state.activeBoardId = ownBoard.id;
       app.loadBoardIntoState(ownBoard);
       app.applyBoardSize(ownBoard.width, ownBoard.height);
       app.renderBoardList();
       history.replaceState({}, '', location.pathname);
+      // Reveal the UI (was hidden by pending-view CSS class)
+      document.documentElement.classList.remove('pending-view');
     } else {
-      // Not the user's board (or not logged in) — enter view mode.
+      // Not the user's board (or not logged in) — enter view mode (read-only).
       await loadPublicBoard(urlBoard);
+      // If loadPublicBoard failed (board not found / private), still reveal UI
+      // so the user isn't stuck on a blank page.
+      if (!app?.isViewMode) {
+        document.documentElement.classList.remove('pending-view');
+      }
     }
   }
 })();
