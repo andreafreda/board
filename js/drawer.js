@@ -1,0 +1,386 @@
+// ════════════════════════════════════════════════════════════════════
+//   drawer.js — side drawer (board list, presets, actions, popup)
+// ════════════════════════════════════════════════════════════════════
+// Big chunk of UI: the right-hand drawer, the per-board controls
+// (rename / duplicate / delete / public-private toggle / share link),
+// the resolution presets row, and the bottom action buttons.
+
+import { dom } from './dom.js';
+import {
+  state, save, syncActiveBoard, loadBoardIntoState, mkBoard, uid, clone,
+  PRESETS,
+} from './state.js';
+import {
+  applyBoardSize, centerBoard,
+  redrawBoard,
+} from './board.js';
+import {
+  renderNotes, deactivateNote, getActiveNote,
+  setShowConfirm,
+} from './notes.js';
+
+// ── Auth bridge (set by auth.js) ────────────────────────────────────
+let _authHooks = {
+  getCurrentUser: () => null,
+  sbCreateBoard:    () => {},
+  sbDeleteBoard:    () => {},
+  sbUpdateBoardName: () => {},
+  sbUpdateVisibility: () => {},
+};
+export function setAuthHooks(h) { _authHooks = { ..._authHooks, ...h }; }
+
+// ════════════════════════════════════════════════════════════════════
+//   Drawer open/close
+// ════════════════════════════════════════════════════════════════════
+export function openDrawer(force) {
+  const open = force ?? !dom.drawer.classList.contains('open');
+  dom.drawer.classList.toggle('open', open);
+}
+
+export function initDrawer() {
+  dom.hamburger.addEventListener('click', () => openDrawer());
+}
+
+// ════════════════════════════════════════════════════════════════════
+//   Confirm popup (used by notes + board delete)
+// ════════════════════════════════════════════════════════════════════
+let pendingDelete = null;
+
+export function showConfirm(anchorEl, onConfirm, msg) {
+  dom.confirmMsg.textContent = msg || 'Eliminare il post-it?';
+  pendingDelete = onConfirm;
+  const r = anchorEl.getBoundingClientRect();
+  const popW = 210, margin = 8;
+  let left = r.right - popW;
+  let top  = r.bottom + margin;
+  if (left < 8) left = 8;
+  if (top + 100 > window.innerHeight) top = r.top - 100 - margin;
+  dom.confirmPop.style.left = left + 'px';
+  dom.confirmPop.style.top  = top  + 'px';
+  dom.confirmPop.classList.add('open');
+}
+
+function hideConfirm() {
+  dom.confirmPop.classList.remove('open');
+  pendingDelete = null;
+}
+
+export function initConfirmPopup() {
+  dom.confirmYes.addEventListener('click', () => {
+    if (pendingDelete) { pendingDelete(); hideConfirm(); }
+  });
+  dom.confirmNo.addEventListener('click', hideConfirm);
+  document.addEventListener('click', (e) => {
+    if (dom.confirmPop.classList.contains('open') && !dom.confirmPop.contains(e.target)) {
+      hideConfirm();
+    }
+  }, { capture: true });
+
+  // Wire notes.js so it can call our showConfirm
+  setShowConfirm(showConfirm);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//   Board list
+// ════════════════════════════════════════════════════════════════════
+export function renderBoardList() {
+  const listEl = dom.boardsList;
+  if (!listEl) return;
+
+  const isUser = !!_authHooks.getCurrentUser();
+  if (dom.newBoardBtn) dom.newBoardBtn.style.display = isUser ? 'grid' : 'none';
+
+  listEl.innerHTML = '';
+
+  if (!isUser) {
+    // Guest: show the active board as a single read-only entry
+    const b = state.boards.find((b) => b.id === state.activeBoardId) || state.boards[0];
+    if (b) {
+      const item = document.createElement('div');
+      item.className = 'd-board local active';
+      const dot = document.createElement('div'); dot.className = 'd-dot';
+      const name = document.createElement('span');
+      name.className = 'd-bname';
+      name.textContent = b.name; name.title = b.name;
+      item.append(dot, name);
+      listEl.appendChild(item);
+    }
+    return;
+  }
+
+  state.boards.forEach((b) => {
+    if (!b.visibility) b.visibility = 'private';
+    const isActive = b.id === state.activeBoardId;
+    const isPublic = b.visibility === 'public';
+
+    const item = document.createElement('div');
+    item.className = 'd-board' + (isActive ? ' active' : '');
+    item.addEventListener('click', () => switchBoard(b.id));
+
+    const dot  = document.createElement('div'); dot.className = 'd-dot';
+    const name = document.createElement('span');
+    name.className = 'd-bname';
+    name.textContent = b.name; name.title = b.name;
+
+    const visBtn = document.createElement('button');
+    visBtn.type = 'button';
+    visBtn.className = 'vis-btn' + (isPublic ? ' pub' : '');
+    visBtn.textContent = isPublic ? '🌐' : '🔒';
+    visBtn.title = isPublic ? 'Public — click to make private' : 'Private — click to share';
+    visBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newVis = isPublic ? 'private' : 'public';
+      b.visibility = newVis;
+      save();
+      _authHooks.sbUpdateVisibility?.(b.id, newVis);
+      renderBoardList();
+    });
+
+    const acts = document.createElement('div'); acts.className = 'd-acts';
+    const mkbib = (icon, cls, title, cb) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'd-bib ' + cls;
+      btn.title = title;
+      btn.textContent = icon;
+      btn.addEventListener('click', (e) => { e.stopPropagation(); cb(btn); });
+      return btn;
+    };
+    acts.append(
+      mkbib('✏️', '',    'Rename',    () => startRenameBoard(b, name)),
+      mkbib('⧉',  '',    'Duplicate', () => dupBoard(b)),
+      ...(state.boards.length > 1
+          ? [mkbib('✕', 'del', 'Delete', (btn) => confirmDeleteBoard(b.id, btn))]
+          : []),
+    );
+
+    item.append(dot, name, visBtn, acts);
+    listEl.appendChild(item);
+
+    // Share-link row when board is public
+    if (isPublic) {
+      const shareRow = document.createElement('div');
+      shareRow.className = 'd-share-row';
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'd-copy-btn';
+      copyBtn.title = 'Copy share link';
+      copyBtn.innerHTML = '🔗';
+      let copyTimer = null;
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const link = `${location.origin}${location.pathname}?board=${b.id}`;
+        navigator.clipboard.writeText(link).then(() => {
+          copyBtn.innerHTML = '✓';
+          copyBtn.classList.add('copied');
+          clearTimeout(copyTimer);
+          copyTimer = setTimeout(() => {
+            copyBtn.innerHTML = '🔗';
+            copyBtn.classList.remove('copied');
+          }, 2000);
+        }).catch(() => prompt('Share link:', link));
+      });
+      shareRow.appendChild(copyBtn);
+      listEl.appendChild(shareRow);
+    }
+  });
+}
+
+// ── Per-board operations ────────────────────────────────────────────
+function startRenameBoard(board, nameEl) {
+  const orig = board.name;
+  const inp = document.createElement('input');
+  inp.className = 'd-binp';
+  inp.value = orig;
+  nameEl.replaceWith(inp);
+  inp.focus(); inp.select();
+  const done = () => {
+    board.name = inp.value.trim() || orig;
+    nameEl.textContent = board.name;
+    nameEl.title = board.name;
+    inp.replaceWith(nameEl);
+    if (board.id === state.activeBoardId) document.title = board.name;
+    save();
+    _authHooks.sbUpdateBoardName?.(board.id, board.name);
+  };
+  inp.addEventListener('blur', done);
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') inp.blur();
+    if (e.key === 'Escape') { inp.value = orig; inp.blur(); }
+  });
+}
+
+function switchBoard(id) {
+  if (id === state.activeBoardId) { openDrawer(false); return; }
+  if (getActiveNote()) deactivateNote();
+  syncActiveBoard();
+  state.activeBoardId = id;
+  const b = state.boards.find((b) => b.id === id);
+  loadBoardIntoState(b);
+  applyBoardSize(b.width, b.height);
+  renderBoardList(); renderPresets();
+  openDrawer(false);
+  save();
+}
+
+function newBoard() {
+  if (getActiveNote()) deactivateNote();
+  syncActiveBoard();
+  const b = mkBoard();
+  state.boards.push(b);
+  state.activeBoardId = b.id;
+  loadBoardIntoState(b);
+  applyBoardSize(b.width, b.height);
+  renderBoardList(); renderPresets();
+  save();
+  _authHooks.sbCreateBoard?.(b);
+}
+
+function dupBoard(board) {
+  if (board.id === state.activeBoardId) syncActiveBoard();
+  const dup = clone(board);
+  dup.id = uid();
+  dup.notes = dup.notes.map((n) => ({ ...n, id: uid() }));
+  // Duplicates start private — sharing must be re-enabled deliberately
+  dup.visibility = 'private';
+  state.boards.push(dup);
+  // Switch to the new duplicate so the user sees what they just created
+  state.activeBoardId = dup.id;
+  loadBoardIntoState(dup);
+  applyBoardSize(dup.width, dup.height);
+  renderBoardList(); renderPresets();
+  save();
+  _authHooks.sbCreateBoard?.(dup);
+}
+
+function confirmDeleteBoard(boardId, anchorEl) {
+  const b = state.boards.find((bd) => bd.id === boardId);
+  showConfirm(anchorEl, () => execDeleteBoard(boardId), `Delete "${b?.name || 'board'}"?`);
+}
+
+function execDeleteBoard(boardId) {
+  const idx = state.boards.findIndex((b) => b.id === boardId);
+  if (idx < 0) return;
+  state.boards.splice(idx, 1);
+  if (state.activeBoardId === boardId) {
+    if (getActiveNote()) deactivateNote();
+    const nb = state.boards[Math.min(idx, state.boards.length - 1)];
+    state.activeBoardId = nb.id;
+    loadBoardIntoState(nb);
+    applyBoardSize(nb.width, nb.height);
+  }
+  renderBoardList(); renderPresets(); save();
+  _authHooks.sbDeleteBoard?.(boardId);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//   Resolution presets + size inputs
+// ════════════════════════════════════════════════════════════════════
+export function renderPresets() {
+  const row = dom.presetRow;
+  row.innerHTML = '';
+  PRESETS.forEach((p) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = p.label;
+    b.title = p.title || p.label;
+    const isActive = Number(state.boardW) === p.w && Number(state.boardH) === p.h;
+    b.className = 'preset-btn' + (isActive ? ' active' : '');
+    b.style.cssText = 'font-size:1.3rem;padding:.3rem .5rem;';
+    b.addEventListener('click', () => {
+      dom.boardW.value = p.w;
+      dom.boardH.value = p.h;
+      applyBoardSize(p.w, p.h);
+      renderPresets(); save();
+    });
+    row.appendChild(b);
+  });
+  dom.boardW.value = state.boardW;
+  dom.boardH.value = state.boardH;
+}
+
+function initSizeButtons() {
+  dom.applySize.addEventListener('click', () => {
+    const w = Math.max(400, Math.min(4000, parseInt(dom.boardW.value) || 1366));
+    const h = Math.max(300, Math.min(3000, parseInt(dom.boardH.value) || 768));
+    applyBoardSize(w, h);
+    renderPresets(); save();
+    openDrawer(false);
+  });
+  dom.centerBoard.addEventListener('click', () => {
+    centerBoard();
+    openDrawer(false);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+//   Bottom actions: clear sketch / reset board / export / import
+// ════════════════════════════════════════════════════════════════════
+function initActionButtons() {
+  dom.clearSketch.addEventListener('click', () => {
+    state.strokes = [];
+    redrawBoard(); save();
+    openDrawer(false);
+  });
+
+  dom.resetBtn.addEventListener('click', (e) => {
+    showConfirm(e.currentTarget, () => {
+      if (getActiveNote()) deactivateNote();
+      state.notes = []; state.strokes = [];
+      renderNotes(); redrawBoard();
+      save();
+      openDrawer(false);
+    }, 'Clear all notes and drawings?');
+  });
+
+  // New-board button (logged-in only — visibility is toggled in renderBoardList)
+  dom.newBoardBtn?.addEventListener('click', (e) => { e.stopPropagation(); newBoard(); });
+
+  // Export
+  dom.exportBtn.addEventListener('click', () => {
+    syncActiveBoard();
+    const b = state.boards.find((bd) => bd.id === state.activeBoardId);
+    const out = { name: b.name, width: b.width, height: b.height, notes: b.notes, strokes: b.strokes };
+    const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
+    a.href = url;
+    a.download = `board-${ts}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    openDrawer(false);
+  });
+
+  // Import
+  dom.importFile.addEventListener('change', (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const imp = JSON.parse(ev.target.result);
+        if (typeof imp !== 'object' || !imp.notes) throw new Error('formato non valido');
+        state.notes   = imp.notes   || [];
+        state.strokes = imp.strokes || [];
+        if (imp.width) applyBoardSize(imp.width, imp.height || 768);
+        else { renderNotes(); redrawBoard(); }
+        syncActiveBoard(); save();
+        renderPresets();
+        openDrawer(false);
+      } catch (err) {
+        alert('Import fallito: ' + err.message);
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+//   One-shot init
+// ════════════════════════════════════════════════════════════════════
+export function initDrawerActions() {
+  initConfirmPopup();
+  initSizeButtons();
+  initActionButtons();
+}
