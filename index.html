@@ -368,7 +368,7 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.2.2</div>
+<div class="version">v.1.2.3</div>
 
 <div class="presence-stack hidden" id="presenceStack"></div>
 
@@ -1547,6 +1547,7 @@ window._boardApp={
   broadcastNoteCreate:null,broadcastNoteDelete:null,
   broadcastStrokePt:null,broadcastStrokeEnd:null,
   onAfterRedrawBoard:null,
+  syncDiag:null,   // set by module: () => { channel, liveStrokes, user }
 };
 
 })();
@@ -1778,6 +1779,18 @@ function presenceInitials(name) {
 }
 
 let _presenceChannel = null;
+// Expose sync diagnostics to console: window._boardApp.syncDiag()
+setTimeout(() => {
+  const _app = window._boardApp;
+  if (_app) _app.syncDiag = () => ({
+    channel: !!_presenceChannel,
+    channelState: _presenceChannel?.state ?? 'none',
+    liveStrokes: _liveStrokes.size,
+    user: currentUser?.email ?? 'not logged in',
+    boardId: _app.state?.activeBoardId,
+    boardVis: _app.state?.boards?.find(b => b.id === _app.state?.activeBoardId)?.visibility,
+  });
+}, 500);
 
 function renderPresenceStack(peers) {
   const stack = document.getElementById('presenceStack');
@@ -1877,6 +1890,7 @@ document.addEventListener('pointermove', e => sendCursor(e.clientX, e.clientY), 
 async function joinPresenceChannel(boardId) {
   await leavePresenceChannel();
   if (!boardId) return;
+  console.log('[sync] joining channel board:' + boardId);
 
   const client = await getClient();
   const app    = window._boardApp;
@@ -1942,9 +1956,11 @@ async function joinPresenceChannel(boardId) {
       handleStrokeEnd(payload);
     })
     .subscribe(async status => {
+      console.log('[sync] channel status:', status);
       if (status === 'SUBSCRIBED') {
         await _presenceChannel.track({ userId: myKey, name, color, boardId, joinedAt: Date.now() });
         installRedrawHook(); // activate after-redraw hook for live remote strokes
+        console.log('[sync] subscribed as', name, '(' + myKey + ')');
       }
     });
 }
@@ -2061,6 +2077,7 @@ function broadcastStrokePt(data) {
 }
 function broadcastStrokeEnd(data) {
   if (!_presenceChannel || !currentUser) return;
+  console.log('[sync] broadcastStrokeEnd', data.strokeId);
   _presenceChannel.send({ type: 'broadcast', event: 'stroke:end',
     payload: { ...data, userId: currentUser.id } });
 }
@@ -2155,8 +2172,9 @@ function handleStrokePt({ strokeId, type, noteId, x, y, color, size, eraser }) {
 }
 
 function handleStrokeEnd({ strokeId, type, noteId }) {
+  console.log('[sync] handleStrokeEnd received', strokeId);
   const live = _liveStrokes.get(strokeId);
-  if (!live) return;
+  if (!live) { console.warn('[sync] handleStrokeEnd: no live stroke for', strokeId); return; }
   const app = window._boardApp;
   if (app && live.points.length >= 2) {
     // Commit to state so redrawBoard/redrawNoteCanvas stays consistent
@@ -2319,36 +2337,39 @@ async function renderAuth(session) {
     try {
       const client = await getClient();
 
-      // ── Step 1: upsert the current guest board if it has content ──
-      // This handles BOTH first-login and returning-user-with-offline-edits scenarios.
-      // We always push local content to Supabase before loading, so offline edits
-      // are never lost regardless of whether the user has existing cloud boards.
+      // ── Step 1: upsert the current board if it has local content ──
+      // Only for boards owned by this user (no ownerId = locally-created guest board,
+      // or ownerId matches current user). Shared boards (ownerId = other user) must
+      // NOT be upserted here — trying to write another user's board row → 403.
       let savedGuestBoardId = null;
       if (app) {
         app.syncActiveBoard?.();
         const gb = app.state.boards?.find(b => b.id === app.state.activeBoardId)
                 || app.state.boards?.[0];
-        const hasContent = gb && ((gb.notes?.length > 0) || (gb.strokes?.length > 0));
+        const isOwnBoard = gb && (!gb.ownerId || gb.ownerId === session.user.id);
+        const hasContent = isOwnBoard && ((gb.notes?.length > 0) || (gb.strokes?.length > 0));
         if (hasContent) {
           savedGuestBoardId = gb.id;
           const ts = new Date().toISOString();
-          // upsert: insert if new board, update if returning user's board
-          await client.from('boards').upsert({
+          const { error: gbe } = await client.from('boards').upsert({
             id: gb.id, owner_id: session.user.id,
             name: gb.name || 'Board', width: gb.width || 1366, height: gb.height || 768,
             updated_at: ts,
           });
+          if (gbe) console.warn('login board upsert:', gbe.message);
           if (gb.notes.length) {
-            await client.from('notes').upsert(
+            const { error: gne } = await client.from('notes').upsert(
               gb.notes.map(n => ({
                 id: n.id, board_id: gb.id, owner_id: session.user.id, data: n, updated_at: ts,
               }))
             );
+            if (gne) console.warn('login notes upsert:', gne.message);
           }
-          await client.from('strokes').upsert({
+          const { error: gse } = await client.from('strokes').upsert({
             id: gb.id, board_id: gb.id, owner_id: session.user.id,
             data: gb.strokes || [], updated_at: ts,
           });
+          if (gse) console.warn('login strokes upsert:', gse.message);
         }
       }
 
