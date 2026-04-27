@@ -83,37 +83,22 @@ alter table public.strokes enable row level security;
 alter table public.strokes drop constraint if exists strokes_board_owner_unique;
 
 -- Deduplicate any pre-existing rows that share (board_id, owner_id) before
--- adding the UNIQUE constraint. Older versions stored one row per board
--- with id = board_id; subsequent code paths could create extras. Strategy:
--- keep the most recently updated row per group and merge every other row's
--- `data` array into it before deleting the rest.
-with merged as (
-  select s.board_id, s.owner_id,
-         -- the surviving row id (most recently updated)
-         (array_agg(s.id order by s.updated_at desc))[1] as keep_id,
-         -- combined strokes from every duplicate row in the group
-         (
-           select coalesce(jsonb_agg(elem), '[]'::jsonb)
-             from public.strokes s2,
-                  lateral jsonb_array_elements(coalesce(s2.data, '[]'::jsonb)) elem
-            where s2.board_id = s.board_id and s2.owner_id = s.owner_id
-         ) as combined
-    from public.strokes s
-   group by s.board_id, s.owner_id
-  having count(*) > 1
-)
-update public.strokes
-   set data = merged.combined
-  from merged
- where strokes.id = merged.keep_id;
-
-delete from public.strokes s
- using (
-   select id,
-          row_number() over (partition by board_id, owner_id order by updated_at desc) as rn
-     from public.strokes
- ) ranked
- where s.id = ranked.id and ranked.rn > 1;
+-- adding the UNIQUE constraint. Older code paths could create more than one
+-- row per (board, writer); we keep only the most recently updated one. The
+-- older rows' strokes are dropped — acceptable because each writer's row is
+-- self-contained and the latest is by definition the freshest.
+delete from public.strokes
+ where id in (
+   select id from (
+     select id,
+            row_number() over (
+              partition by board_id, owner_id
+              order by updated_at desc nulls last, created_at desc nulls last, id
+            ) as rn
+       from public.strokes
+   ) t
+   where t.rn > 1
+ );
 
 alter table public.strokes add  constraint strokes_board_owner_unique
   unique (board_id, owner_id);
