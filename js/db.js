@@ -156,6 +156,20 @@ export async function sbSaveActiveBoard(client, writerId, board, role = 'owner')
       visibility: board.visibility || 'private',
       updated_at: ts,
     });
+  } else if (role === 'editor') {
+    // Editors can't UPDATE the boards row directly (RLS blocks). We expose
+    // a SECURITY DEFINER RPC that updates ONLY width/height — so resolution
+    // changes by editors propagate to every cooperative member at refresh.
+    if (Number.isFinite(board.width) && Number.isFinite(board.height)) {
+      try {
+        await client.rpc('set_board_size', {
+          b_id: board.id, w: Math.round(board.width), h: Math.round(board.height),
+        });
+      } catch (err) {
+        // Non-fatal: notes/strokes still get saved.
+        console.warn('set_board_size RPC failed:', err?.message || err);
+      }
+    }
   }
 
   if (board.notes.length > 0) {
