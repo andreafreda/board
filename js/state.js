@@ -78,6 +78,16 @@ function loadInitialState() {
     raw = { ...raw, boards: [b], activeBoardId: b.id };
   }
 
+  // When logged in, save() writes UI prefs + activeBoardId to PREFS_KEY
+  // (separate from STORAGE_KEY which only the guest path writes). Merge
+  // those prefs on top so a logged-in user's last-viewed board id is
+  // restored on refresh.
+  let prefs = {};
+  try { prefs = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}'); } catch {}
+  if (prefs && typeof prefs === 'object') {
+    raw = { ...raw, ...prefs };
+  }
+
   const s = { ...DEFAULTS, ...raw };
 
   // Ensure at least one board exists and the active id points to it

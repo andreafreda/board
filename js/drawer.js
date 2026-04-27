@@ -210,7 +210,9 @@ export function renderBoardList() {
       shareRow.appendChild(copyBtn);
       listEl.appendChild(shareRow);
 
-      if (b.visibility === 'cooperative') {
+      // Members panel only for the ACTIVE cooperative board to avoid
+      // a permanent stack of panels under every shared board.
+      if (b.visibility === 'cooperative' && isActive) {
         listEl.appendChild(buildMembersPanel(b));
       }
     }
