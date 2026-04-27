@@ -107,6 +107,62 @@ update public.strokes s
  where s.board_id = b.id and s.owner_id <> b.owner_id;
 
 -- ════════════════════════════════════════════════════════════════════
+--   SECURITY DEFINER helpers (break RLS recursion cycles)
+-- ════════════════════════════════════════════════════════════════════
+-- Without these, the policies create cycles like:
+--   INSERT board_members → check members_insert_owner → SELECT boards
+--     → check boards_select_cooperative_member → SELECT board_members
+--     → check members_* → SELECT boards → … infinite recursion (42P17)
+-- These helpers run as the function owner with RLS bypassed for the
+-- single specific check, so the cycle is broken.
+
+create or replace function public.is_board_owner(b_id uuid)
+returns boolean language sql security definer stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.boards
+     where id = b_id and owner_id = (select auth.uid())
+  )
+$$;
+
+create or replace function public.is_board_member(b_id uuid)
+returns boolean language sql security definer stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.board_members
+     where board_id = b_id and email = (select auth.email())
+  )
+$$;
+
+create or replace function public.is_board_editor(b_id uuid)
+returns boolean language sql security definer stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.board_members
+     where board_id = b_id and email = (select auth.email()) and role = 'editor'
+  )
+$$;
+
+create or replace function public.board_visibility(b_id uuid)
+returns text language sql security definer stable
+set search_path = public
+as $$
+  select visibility from public.boards where id = b_id
+$$;
+
+revoke all on function public.is_board_owner(uuid)    from public;
+revoke all on function public.is_board_member(uuid)   from public;
+revoke all on function public.is_board_editor(uuid)   from public;
+revoke all on function public.board_visibility(uuid)  from public;
+grant execute on function public.is_board_owner(uuid)    to authenticated, anon;
+grant execute on function public.is_board_member(uuid)   to authenticated;
+grant execute on function public.is_board_editor(uuid)   to authenticated;
+grant execute on function public.board_visibility(uuid)  to authenticated, anon;
+
+-- ════════════════════════════════════════════════════════════════════
 --   Row-Level Security Policies
 -- ════════════════════════════════════════════════════════════════════
 
@@ -126,15 +182,11 @@ create policy "boards_delete_own" on public.boards
 create policy "boards_select_public" on public.boards
   for select to anon, authenticated using (visibility = 'public');
 
--- Cooperative boards: any authenticated user listed as member can SELECT
+-- Cooperative boards: any authenticated user listed as member can SELECT.
+-- Uses SECURITY DEFINER helper to avoid recursion with members_* policies.
 create policy "boards_select_cooperative_member" on public.boards
   for select to authenticated using (
-    visibility = 'cooperative'
-    and exists (
-      select 1 from public.board_members bm
-       where bm.board_id = boards.id
-         and bm.email    = (select auth.email())
-    )
+    visibility = 'cooperative' and public.is_board_member(id)
   );
 
 -- ── notes ────────────────────────────────────────────────────────────
@@ -153,64 +205,36 @@ create policy "notes_delete_own" on public.notes
 -- Public-board notes are SELECT-able by anyone (view-mode read)
 create policy "notes_select_public" on public.notes
   for select to anon, authenticated using (
-    exists (select 1 from public.boards b
-             where b.id = notes.board_id and b.visibility = 'public')
+    public.board_visibility(board_id) = 'public'
   );
 
 -- Cooperative members (any role) can SELECT notes on their cooperative boards
 create policy "notes_select_cooperative_member" on public.notes
   for select to authenticated using (
-    exists (
-      select 1 from public.boards b
-        join public.board_members bm on bm.board_id = b.id
-       where b.id = notes.board_id
-         and b.visibility = 'cooperative'
-         and bm.email = (select auth.email())
-    )
+    public.board_visibility(board_id) = 'cooperative'
+    and public.is_board_member(board_id)
   );
 
 -- Cooperative editors can INSERT/UPDATE/DELETE notes on cooperative boards
 create policy "notes_insert_cooperative_editor" on public.notes
   for insert to authenticated with check (
-    exists (
-      select 1 from public.boards b
-        join public.board_members bm on bm.board_id = b.id
-       where b.id = notes.board_id
-         and b.visibility = 'cooperative'
-         and bm.email = (select auth.email())
-         and bm.role  = 'editor'
-    )
+    public.board_visibility(board_id) = 'cooperative'
+    and public.is_board_editor(board_id)
   );
 create policy "notes_update_cooperative_editor" on public.notes
-  for update to authenticated using (
-    exists (
-      select 1 from public.boards b
-        join public.board_members bm on bm.board_id = b.id
-       where b.id = notes.board_id
-         and b.visibility = 'cooperative'
-         and bm.email = (select auth.email())
-         and bm.role  = 'editor'
-    )
-  ) with check (
-    exists (
-      select 1 from public.boards b
-        join public.board_members bm on bm.board_id = b.id
-       where b.id = notes.board_id
-         and b.visibility = 'cooperative'
-         and bm.email = (select auth.email())
-         and bm.role  = 'editor'
-    )
+  for update to authenticated
+  using (
+    public.board_visibility(board_id) = 'cooperative'
+    and public.is_board_editor(board_id)
+  )
+  with check (
+    public.board_visibility(board_id) = 'cooperative'
+    and public.is_board_editor(board_id)
   );
 create policy "notes_delete_cooperative_editor" on public.notes
   for delete to authenticated using (
-    exists (
-      select 1 from public.boards b
-        join public.board_members bm on bm.board_id = b.id
-       where b.id = notes.board_id
-         and b.visibility = 'cooperative'
-         and bm.email = (select auth.email())
-         and bm.role  = 'editor'
-    )
+    public.board_visibility(board_id) = 'cooperative'
+    and public.is_board_editor(board_id)
   );
 
 -- ── strokes ──────────────────────────────────────────────────────────
@@ -227,82 +251,47 @@ create policy "strokes_delete_own" on public.strokes
 
 create policy "strokes_select_public" on public.strokes
   for select to anon, authenticated using (
-    exists (select 1 from public.boards b
-             where b.id = strokes.board_id and b.visibility = 'public')
+    public.board_visibility(board_id) = 'public'
   );
 
 create policy "strokes_select_cooperative_member" on public.strokes
   for select to authenticated using (
-    exists (
-      select 1 from public.boards b
-        join public.board_members bm on bm.board_id = b.id
-       where b.id = strokes.board_id
-         and b.visibility = 'cooperative'
-         and bm.email = (select auth.email())
-    )
+    public.board_visibility(board_id) = 'cooperative'
+    and public.is_board_member(board_id)
   );
 
 create policy "strokes_insert_cooperative_editor" on public.strokes
   for insert to authenticated with check (
-    exists (
-      select 1 from public.boards b
-        join public.board_members bm on bm.board_id = b.id
-       where b.id = strokes.board_id
-         and b.visibility = 'cooperative'
-         and bm.email = (select auth.email())
-         and bm.role  = 'editor'
-    )
+    public.board_visibility(board_id) = 'cooperative'
+    and public.is_board_editor(board_id)
   );
 create policy "strokes_update_cooperative_editor" on public.strokes
-  for update to authenticated using (
-    exists (
-      select 1 from public.boards b
-        join public.board_members bm on bm.board_id = b.id
-       where b.id = strokes.board_id
-         and b.visibility = 'cooperative'
-         and bm.email = (select auth.email())
-         and bm.role  = 'editor'
-    )
-  ) with check (
-    exists (
-      select 1 from public.boards b
-        join public.board_members bm on bm.board_id = b.id
-       where b.id = strokes.board_id
-         and b.visibility = 'cooperative'
-         and bm.email = (select auth.email())
-         and bm.role  = 'editor'
-    )
+  for update to authenticated
+  using (
+    public.board_visibility(board_id) = 'cooperative'
+    and public.is_board_editor(board_id)
+  )
+  with check (
+    public.board_visibility(board_id) = 'cooperative'
+    and public.is_board_editor(board_id)
   );
 
 -- ── board_members ────────────────────────────────────────────────────
--- Owner manages all members of their boards
+-- Owner manages all members of their boards. Uses is_board_owner() to
+-- avoid recursion (would otherwise SELECT public.boards which triggers
+-- the cooperative_member policy that selects from board_members).
 create policy "members_select_owner" on public.board_members
-  for select to authenticated using (
-    exists (select 1 from public.boards b
-             where b.id = board_members.board_id and b.owner_id = (select auth.uid()))
-  );
+  for select to authenticated using (public.is_board_owner(board_id));
 create policy "members_insert_owner" on public.board_members
-  for insert to authenticated with check (
-    exists (select 1 from public.boards b
-             where b.id = board_members.board_id and b.owner_id = (select auth.uid()))
-  );
+  for insert to authenticated with check (public.is_board_owner(board_id));
 create policy "members_delete_owner" on public.board_members
-  for delete to authenticated using (
-    exists (select 1 from public.boards b
-             where b.id = board_members.board_id and b.owner_id = (select auth.uid()))
-  );
+  for delete to authenticated using (public.is_board_owner(board_id));
 create policy "members_update_owner" on public.board_members
   for update to authenticated
-  using (
-    exists (select 1 from public.boards b
-             where b.id = board_members.board_id and b.owner_id = (select auth.uid()))
-  )
-  with check (
-    exists (select 1 from public.boards b
-             where b.id = board_members.board_id and b.owner_id = (select auth.uid()))
-  );
+  using (public.is_board_owner(board_id))
+  with check (public.is_board_owner(board_id));
 
--- A member can read their own row (so the client can know which boards they're invited to)
+-- A member can read their own row (lets the client list invitations)
 create policy "members_select_self" on public.board_members
   for select to authenticated using (email = (select auth.email()));
 
