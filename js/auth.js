@@ -15,6 +15,7 @@ import {
   sbDeleteBoard, sbUpdateVisibility, sbSaveActiveBoard,
   sbListMembers, sbAddMember, sbUpdateMemberRole, sbRemoveMember,
 } from './db.js';
+import { setUserGetter, syncCollabChannel, leaveCollab } from './collab.js';
 
 const GOOGLE_SVG = `<svg width="20" height="20" viewBox="0 0 24 24">
   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -26,6 +27,8 @@ const GOOGLE_SVG = `<svg width="20" height="20" viewBox="0 0 24 24">
 // ── Single source of truth for the current user ─────────────────────
 let currentUser = null;
 export const getCurrentUser = () => currentUser;
+// Wire collab.js so it can read the current user without circular imports
+setUserGetter(getCurrentUser);
 
 // ── Debounced cloud save (called from state.save() when logged in) ──
 let sbSaveTimer = null;
@@ -138,6 +141,8 @@ async function loadCloudBoardsForUser(session) {
     applyBoardSize(active.width, active.height);
     renderBoardList();
     renderPresets();
+    // If the user landed on a cooperative board, open the realtime channel
+    syncCollabChannel();
   } catch (err) {
     console.error('Supabase board load failed:', err);
     renderBoardList();
@@ -169,6 +174,8 @@ function restoreGuestBoardsFromLocalStorage() {
   applyBoardSize(active.width, active.height);
   renderBoardList();
   renderPresets();
+  // Guest is never on a cooperative board — make sure the channel is closed
+  leaveCollab();
 }
 
 // ── Wire the OAuth popup + sign-out + state hooks ───────────────────

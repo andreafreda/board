@@ -81,6 +81,9 @@ export const dom = {
   viewBoardName: $('viewBoardName'),
   viewExitBtn:   $('viewExitBtn'),
 
+  // Peers (presence avatar stack on cooperative boards)
+  peersStack:    $('peersStack'),
+
   // Confirm popup
   confirmPop:  $('confirmPop'),
   confirmMsg:  $('confirmMsg'),

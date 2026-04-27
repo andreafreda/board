@@ -285,6 +285,27 @@ html.pending-view .version,
 html.pending-view #board,
 html.pending-view #notesLayer,
 html.pending-view .pan-ind { visibility: hidden !important; }
+
+/* Peers stack — top-center pill of avatars on cooperative boards */
+.peers-stack{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:38;
+  display:none;align-items:center;gap:0;
+  padding:4px 10px;background:var(--surface);border:1px solid var(--border);
+  border-radius:999px;box-shadow:var(--ssoft);backdrop-filter:blur(10px);
+  max-width:calc(100vw - 200px);}
+.peers-stack.on{display:flex;}
+.peer-avatar{width:28px;height:28px;border-radius:50%;
+  display:grid;place-items:center;font-size:.72rem;font-weight:700;color:#fff;
+  border:2px solid var(--surface);margin-left:-8px;position:relative;flex-shrink:0;
+  overflow:visible;}
+.peer-avatar:first-child{margin-left:0;}
+.peer-avatar.viewer{opacity:.7;}
+.peer-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
+.peer-avatar .peer-role{position:absolute;bottom:-3px;right:-3px;
+  font-size:.55rem;background:var(--surface);border:1px solid var(--border);
+  border-radius:50%;width:14px;height:14px;display:grid;place-items:center;
+  line-height:1;}
+.peer-avatar.peer-overflow{background:var(--muted);font-size:.62rem;}
+.peers-counts{font-size:.7rem;color:var(--muted);margin-left:8px;white-space:nowrap;}
 </style>
 <script>
 // Run before the main IIFE so the user never sees a flash of stale board/list data
@@ -307,7 +328,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.5.6</div>
+<div class="version">v.1.6.0</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -418,6 +439,9 @@ if (new URLSearchParams(location.search).get('board')) {
 
 <button class="fab-fs" id="fullBtn" type="button">⛶</button>
 <div class="pan-ind" id="panInd"></div>
+
+<!-- Peers (online users on cooperative board) -->
+<div class="peers-stack" id="peersStack" aria-label="Utenti online"></div>
 
 <div class="view-banner" id="viewBanner">
   <span style="opacity:.55;font-size:.9rem;">👁</span>

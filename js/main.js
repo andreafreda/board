@@ -105,6 +105,9 @@ initialRender();
       renderPresets();
       history.replaceState({}, '', location.pathname);
       document.documentElement.classList.remove('pending-view');
+      // If we just activated a cooperative board via the URL, join channel
+      const { syncCollabChannel } = await import('./collab.js');
+      syncCollabChannel();
     } else {
       const ok = await loadPublicBoard(urlBoard);
       // If loadPublicBoard failed (board not found / private), still

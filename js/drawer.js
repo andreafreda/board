@@ -18,6 +18,7 @@ import {
   renderNotes, deactivateNote, getActiveNote,
   setShowConfirm,
 } from './notes.js';
+import { syncCollabChannel } from './collab.js';
 
 // ── Auth bridge (set by auth.js) ────────────────────────────────────
 let _authHooks = {
@@ -153,6 +154,9 @@ export function renderBoardList() {
         save();
         _authHooks.sbUpdateVisibility?.(b.id, newVis);
         renderBoardList();
+        // If we just toggled the ACTIVE board into/out of cooperative,
+        // open or close the realtime channel accordingly.
+        if (b.id === state.activeBoardId) syncCollabChannel();
       });
     } else {
       visBtn = document.createElement('span');
@@ -360,6 +364,7 @@ function switchBoard(id) {
   renderBoardList(); renderPresets();
   openDrawer(false);
   save();
+  syncCollabChannel();
 }
 
 function newBoard() {
@@ -373,6 +378,7 @@ function newBoard() {
   renderBoardList(); renderPresets();
   save();
   _authHooks.sbCreateBoard?.(b);
+  syncCollabChannel();
 }
 
 function dupBoard(board) {
@@ -390,6 +396,7 @@ function dupBoard(board) {
   renderBoardList(); renderPresets();
   save();
   _authHooks.sbCreateBoard?.(dup);
+  syncCollabChannel();
 }
 
 function confirmDeleteBoard(boardId, anchorEl) {
@@ -410,6 +417,7 @@ function execDeleteBoard(boardId) {
   }
   renderBoardList(); renderPresets(); save();
   _authHooks.sbDeleteBoard?.(boardId);
+  syncCollabChannel();
 }
 
 // ════════════════════════════════════════════════════════════════════
