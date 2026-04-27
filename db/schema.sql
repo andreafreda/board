@@ -234,11 +234,15 @@ create policy "notes_select_cooperative_member" on public.notes
     and public.is_board_member(board_id)
   );
 
--- Board owner can SELECT/UPDATE/DELETE any note on their board (regardless
--- of who created it). Without this, editors' notes are invisible to the owner
--- because notes_select_own only matches auth.uid() = notes.owner_id.
+-- Board owner can SELECT/INSERT/UPDATE/DELETE any note on their board
+-- regardless of who created it. The INSERT path matters when the owner
+-- upserts a note that's no longer in DB (e.g. another writer deleted it
+-- concurrently) — without this, the owner's save would 42501 because
+-- notes_insert_own requires owner_id=auth.uid().
 create policy "notes_select_board_owner" on public.notes
   for select to authenticated using (public.is_board_owner(board_id));
+create policy "notes_insert_board_owner" on public.notes
+  for insert to authenticated with check (public.is_board_owner(board_id));
 create policy "notes_update_board_owner" on public.notes
   for update to authenticated
   using (public.is_board_owner(board_id))
@@ -291,10 +295,12 @@ create policy "strokes_select_cooperative_member" on public.strokes
     and public.is_board_member(board_id)
   );
 
--- Board owner can SELECT/UPDATE/DELETE any stroke row on their board (each
--- writer keeps their own row, but the owner needs to see them all).
+-- Board owner can SELECT/INSERT/UPDATE/DELETE any stroke row on their
+-- board (each writer keeps their own row, but the owner needs full access).
 create policy "strokes_select_board_owner" on public.strokes
   for select to authenticated using (public.is_board_owner(board_id));
+create policy "strokes_insert_board_owner" on public.strokes
+  for insert to authenticated with check (public.is_board_owner(board_id));
 create policy "strokes_update_board_owner" on public.strokes
   for update to authenticated
   using (public.is_board_owner(board_id))
