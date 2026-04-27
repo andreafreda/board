@@ -122,11 +122,13 @@ export function renderBoardList() {
     cooperative: 'Cooperativa (membri editor) — click per privato',
   };
 
-  state.boards.forEach((b) => {
+  // Render a single board entry (used by both sections)
+  const renderEntry = (b) => {
     if (!b.visibility) b.visibility = 'private';
-    const isActive = b.id === state.activeBoardId;
-    const isMine   = (b.myRole || 'owner') === 'owner';
+    const isActive    = b.id === state.activeBoardId;
+    const isMine      = (b.myRole || 'owner') === 'owner';
     const isShareable = b.visibility === 'public' || b.visibility === 'cooperative';
+    const ownedCount  = state.boards.filter((bd) => (bd.myRole || 'owner') === 'owner').length;
 
     const item = document.createElement('div');
     item.className = 'd-board' + (isActive ? ' active' : '');
@@ -137,8 +139,7 @@ export function renderBoardList() {
     name.className = 'd-bname';
     name.textContent = b.name; name.title = b.name;
 
-    // Visibility cycle button — owner only
-    let visBtn = null;
+    let visBtn;
     if (isMine) {
       visBtn = document.createElement('button');
       visBtn.type = 'button';
@@ -154,7 +155,6 @@ export function renderBoardList() {
         renderBoardList();
       });
     } else {
-      // Non-owner: show role badge instead
       visBtn = document.createElement('span');
       visBtn.className = 'vis-btn pub';
       visBtn.textContent = b.myRole === 'editor' ? '✏️' : '👁';
@@ -175,7 +175,7 @@ export function renderBoardList() {
       acts.append(
         mkbib('✏️', '', 'Rename',    () => startRenameBoard(b, name)),
         mkbib('⧉',  '', 'Duplicate', () => dupBoard(b)),
-        ...(state.boards.filter((bd) => (bd.myRole || 'owner') === 'owner').length > 1
+        ...(ownedCount > 1
             ? [mkbib('✕', 'del', 'Delete', (btn) => confirmDeleteBoard(b.id, btn))]
             : []),
       );
@@ -184,7 +184,7 @@ export function renderBoardList() {
     item.append(dot, name, visBtn, acts);
     listEl.appendChild(item);
 
-    // Share-link row + members panel for shareable boards I own
+    // Share-link row + members panel — owner-only
     if (isMine && isShareable) {
       const shareRow = document.createElement('div');
       shareRow.className = 'd-share-row';
@@ -210,13 +210,33 @@ export function renderBoardList() {
       shareRow.appendChild(copyBtn);
       listEl.appendChild(shareRow);
 
-      // Members panel only for the ACTIVE cooperative board to avoid
-      // a permanent stack of panels under every shared board.
       if (b.visibility === 'cooperative' && isActive) {
         listEl.appendChild(buildMembersPanel(b));
       }
     }
-  });
+  };
+
+  // Section header helper
+  const renderHeader = (text) => {
+    const h = document.createElement('div');
+    h.className = 'd-section-hdr';
+    h.textContent = text;
+    h.style.cssText = 'font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:.5rem .15rem .25rem;';
+    listEl.appendChild(h);
+  };
+
+  // Split into "mine" vs "shared with me" (cooperative member, not owner)
+  const ownBoards    = state.boards.filter((b) => (b.myRole || 'owner') === 'owner');
+  const sharedBoards = state.boards.filter((b) => b.myRole && b.myRole !== 'owner');
+
+  if (ownBoards.length) {
+    renderHeader('Le tue board');
+    ownBoards.forEach(renderEntry);
+  }
+  if (sharedBoards.length) {
+    renderHeader('Condivise con te');
+    sharedBoards.forEach(renderEntry);
+  }
 }
 
 // ── Members panel (cooperative boards, owner-only) ──────────────────
