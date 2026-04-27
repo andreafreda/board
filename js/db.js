@@ -58,13 +58,18 @@ export async function sbLoadBoards(client, ownerId, email) {
 
   // Hydrate notes + strokes for every board in parallel.
   // Cooperative boards may have MANY strokes rows (one per writer) —
-  // we flatten them all into a single combined array.
+  // we flatten them all into a single combined array. Each note/stroke
+  // gets its DB owner_id tagged onto it so save() can preserve ownership
+  // and avoid stomping over other writers' rows.
   return Promise.all(all.map(async (b) => {
     const [{ data: notes }, { data: strokes }] = await Promise.all([
-      client.from('notes').select('id,data').eq('board_id', b.id),
+      client.from('notes').select('id,data,owner_id').eq('board_id', b.id),
       client.from('strokes').select('data,owner_id').eq('board_id', b.id),
     ]);
-    const flatStrokes = (strokes || []).flatMap((r) => r.data || []);
+    const taggedNotes = (notes || []).map((r) => ({ ...r.data, _ownerId: r.owner_id }));
+    const flatStrokes = (strokes || []).flatMap((r) =>
+      (r.data || []).map((s) => ({ ...s, _ownerId: r.owner_id })),
+    );
     return {
       id: b.id,
       name: b.name,
@@ -74,7 +79,7 @@ export async function sbLoadBoards(client, ownerId, email) {
       ownerId: b.owner_id,
       myRole:  b._myRole,           // 'owner' | 'editor' | 'viewer'
       panX: 0, panY: 0,
-      notes:   (notes || []).map((r) => r.data),
+      notes:   taggedNotes,
       strokes: flatStrokes,
     };
   }));
@@ -123,16 +128,26 @@ export async function sbUpdateVisibility(client, ownerId, boardId, vis) {
 //   'editor' → notes (per-row) + their own strokes row
 //   'viewer' → nothing (defensive — viewers shouldn't trigger save)
 //
-// `myStrokes` is just the writer's strokes (those they drew this session) — the
-// caller must split combined-board strokes into "mine" vs "remote" before save.
-// For now (commit 1, no realtime yet) callers pass board.strokes as myStrokes
-// because we have no way to distinguish — last-write-wins on strokes still
-// possible until commit 2 wires per-user buffers via broadcast.
-export async function sbSaveActiveBoard(client, writerId, board, role = 'owner', myStrokes) {
+// Notes carry an `_ownerId` tag (from sbLoadBoards) — we preserve it on
+// upsert so cooperative editors don't accidentally take ownership of notes
+// the board owner created. New notes created locally have no _ownerId
+// and get the current writer as their owner.
+//
+// Strokes filter by _ownerId: each writer maintains their OWN strokes row
+// (UNIQUE(board_id, owner_id)). We never include other writers' strokes
+// in our own row — that would duplicate them on next load.
+export async function sbSaveActiveBoard(client, writerId, board, role = 'owner') {
   if (!writerId || !board) return;
   if (role === 'viewer') return;
   const ts = new Date().toISOString();
-  const strokesToWrite = (myStrokes ?? board.strokes) || [];
+
+  // ── strokes: keep only mine ──
+  // (no _ownerId = locally drawn this session; matches writerId = previously
+  // loaded as mine. Anything tagged with someone else's id gets dropped.)
+  const stripOwner = (s) => { const { _ownerId, ...rest } = s; return rest; };
+  const myStrokes = (board.strokes || [])
+    .filter((s) => !s._ownerId || s._ownerId === writerId)
+    .map(stripOwner);
 
   if (role === 'owner') {
     await client.from('boards').upsert({
@@ -146,16 +161,24 @@ export async function sbSaveActiveBoard(client, writerId, board, role = 'owner',
   if (board.notes.length > 0) {
     await client.from('notes').upsert(
       board.notes.map((n) => ({
-        id: n.id, board_id: board.id, owner_id: writerId,
-        data: n, updated_at: ts,
+        id: n.id, board_id: board.id,
+        // Preserve the original creator's ownership; default to current
+        // writer for newly-created notes (no _ownerId yet).
+        owner_id: n._ownerId || writerId,
+        data: stripOwner(n),
+        updated_at: ts,
       })),
     );
   }
 
-  // Owner cleans up notes deleted from the board. Editors don't bulk-delete —
-  // they can delete individual notes via the UI which calls the policy directly.
+  // Owner cleans up notes deleted from the board — but ONLY their own notes,
+  // not those created by cooperative editors (which the owner sees but doesn't
+  // necessarily have in their local state if they reload before the editor's
+  // broadcast arrives). Without this filter the owner would silently delete
+  // editors' notes during a normal save.
   if (role === 'owner') {
-    const { data: existing } = await client.from('notes').select('id').eq('board_id', board.id);
+    const { data: existing } = await client
+      .from('notes').select('id').eq('board_id', board.id).eq('owner_id', writerId);
     const curIds = new Set(board.notes.map((n) => n.id));
     const toDelete = (existing || []).map((r) => r.id).filter((id) => !curIds.has(id));
     if (toDelete.length) await client.from('notes').delete().in('id', toDelete);
@@ -164,7 +187,7 @@ export async function sbSaveActiveBoard(client, writerId, board, role = 'owner',
   // One strokes row per (board_id, owner_id) — onConflict on the unique pair
   await client.from('strokes').upsert({
     board_id: board.id, owner_id: writerId,
-    data: strokesToWrite, updated_at: ts,
+    data: myStrokes, updated_at: ts,
   }, { onConflict: 'board_id,owner_id' });
 }
 

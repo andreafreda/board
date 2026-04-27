@@ -215,6 +215,18 @@ create policy "notes_select_cooperative_member" on public.notes
     and public.is_board_member(board_id)
   );
 
+-- Board owner can SELECT/UPDATE/DELETE any note on their board (regardless
+-- of who created it). Without this, editors' notes are invisible to the owner
+-- because notes_select_own only matches auth.uid() = notes.owner_id.
+create policy "notes_select_board_owner" on public.notes
+  for select to authenticated using (public.is_board_owner(board_id));
+create policy "notes_update_board_owner" on public.notes
+  for update to authenticated
+  using (public.is_board_owner(board_id))
+  with check (public.is_board_owner(board_id));
+create policy "notes_delete_board_owner" on public.notes
+  for delete to authenticated using (public.is_board_owner(board_id));
+
 -- Cooperative editors can INSERT/UPDATE/DELETE notes on cooperative boards
 create policy "notes_insert_cooperative_editor" on public.notes
   for insert to authenticated with check (
@@ -259,6 +271,17 @@ create policy "strokes_select_cooperative_member" on public.strokes
     public.board_visibility(board_id) = 'cooperative'
     and public.is_board_member(board_id)
   );
+
+-- Board owner can SELECT/UPDATE/DELETE any stroke row on their board (each
+-- writer keeps their own row, but the owner needs to see them all).
+create policy "strokes_select_board_owner" on public.strokes
+  for select to authenticated using (public.is_board_owner(board_id));
+create policy "strokes_update_board_owner" on public.strokes
+  for update to authenticated
+  using (public.is_board_owner(board_id))
+  with check (public.is_board_owner(board_id));
+create policy "strokes_delete_board_owner" on public.strokes
+  for delete to authenticated using (public.is_board_owner(board_id));
 
 create policy "strokes_insert_cooperative_editor" on public.strokes
   for insert to authenticated with check (
