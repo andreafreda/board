@@ -86,6 +86,24 @@ export function initTxtSlider() {
   });
 }
 
+// Force-close every editing mode (draw / text / note). Used when the user
+// transitions into a read-only context (cooperative viewer or view mode) so
+// any active toolbar / tool gets dismissed instead of lingering on screen.
+export function exitAllModes() {
+  state.drawMode = false;
+  state.textMode = false;
+  state.noteMode = false;
+  dom.drawModeBtn?.classList.remove('on');
+  dom.textModeBtn?.classList.remove('on');
+  dom.noteModeBtn?.classList.remove('on');
+  dom.noteToolbar?.classList.remove('visible');
+  dom.textToolbar?.classList.remove('visible');
+  dom.drawToolbar?.classList.remove('visible');
+  // Close any text-edit context on a note as well
+  try { deactivateNote(); } catch {}
+  syncDraw();
+}
+
 // ── Sketch class toggling (called when entering/leaving draw mode) ──
 function syncDraw() {
   dom.drawToolbar.classList.toggle('visible', state.drawMode);

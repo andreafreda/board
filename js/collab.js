@@ -9,6 +9,7 @@ import { getClient } from './db.js';
 import { state, setReadOnly } from './state.js';
 import { joinBoardChannel, leaveBoardChannel, colorForUser } from './realtime.js';
 import { renderPeers, clearPeers } from './peers.js';
+import { exitAllModes } from './modes.js';
 
 // Apply / clear the cooperative-viewer UI lockout based on the active board's
 // myRole. Idempotent. Called from syncCollabChannel which is invoked on every
@@ -16,7 +17,11 @@ import { renderPeers, clearPeers } from './peers.js';
 function applyRoleUI(board) {
   const isViewer = !!(board && board.myRole === 'viewer');
   setReadOnly(isViewer);
+  const wasViewer = document.body.classList.contains('coop-viewer');
   document.body.classList.toggle('coop-viewer', isViewer);
+  // If we just transitioned INTO read-only, force-close any open edit mode
+  // so a draw / text / note toolbar from the previous board doesn't linger.
+  if (isViewer && !wasViewer) exitAllModes();
 }
 
 // auth.js wires this so we can read the current user without circular imports
