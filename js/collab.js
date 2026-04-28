@@ -6,9 +6,18 @@
 // cooperative. Called whenever any of those change.
 
 import { getClient } from './db.js';
-import { state } from './state.js';
+import { state, setReadOnly } from './state.js';
 import { joinBoardChannel, leaveBoardChannel, colorForUser } from './realtime.js';
 import { renderPeers, clearPeers } from './peers.js';
+
+// Apply / clear the cooperative-viewer UI lockout based on the active board's
+// myRole. Idempotent. Called from syncCollabChannel which is invoked on every
+// active-board change.
+function applyRoleUI(board) {
+  const isViewer = !!(board && board.myRole === 'viewer');
+  setReadOnly(isViewer);
+  document.body.classList.toggle('coop-viewer', isViewer);
+}
 
 // auth.js wires this so we can read the current user without circular imports
 let _getCurrentUser = () => null;
@@ -25,6 +34,9 @@ export async function syncCollabChannel() {
   try {
     const u = _getCurrentUser();
     const b = state.boards.find((bd) => bd.id === state.activeBoardId);
+
+    // Apply read-only UI lockout regardless of channel state
+    applyRoleUI(b);
 
     if (!u || !b || b.visibility !== 'cooperative') {
       await leaveBoardChannel();
@@ -54,4 +66,7 @@ export async function syncCollabChannel() {
 export async function leaveCollab() {
   await leaveBoardChannel();
   clearPeers();
+  // Drop any read-only UI lockout when stepping out of all collab
+  setReadOnly(false);
+  document.body.classList.remove('coop-viewer');
 }

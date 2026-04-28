@@ -116,6 +116,14 @@ let _viewMode = false;
 export const isViewMode    = () => _viewMode;
 export const setViewMode   = (v) => { _viewMode = !!v; };
 
+// ── Read-only flag for cooperative viewers ──────────────────────────
+// Distinct from view mode: view mode = anonymous public reader (entire UI
+// hidden, banner shown). Read-only = logged-in member with role='viewer'
+// on a cooperative board (drawer / pan / theme still usable, just no edits).
+let _readOnly = false;
+export const isReadOnly  = () => _viewMode || _readOnly;
+export const setReadOnly = (v) => { _readOnly = !!v; };
+
 // ── Active-board sync (flat state ↔ boards[]) ───────────────────────
 export function syncActiveBoard() {
   const b = state.boards.find(b => b.id === state.activeBoardId);
@@ -144,7 +152,9 @@ let _saveHook = { getCurrentUser: () => null, scheduleSbSave: () => {} };
 export function setSaveHook(hook) { _saveHook = { ..._saveHook, ...hook }; }
 
 export function save() {
-  if (_viewMode) return;
+  // Skip persistence in any read-only mode — local edits would only revert
+  // on F5 (RLS would block them) and silently corrupt our local state.
+  if (_viewMode || _readOnly) return;
   syncActiveBoard();
   const isUser = !!_saveHook.getCurrentUser();
   if (!isUser) {

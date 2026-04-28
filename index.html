@@ -306,6 +306,34 @@ html.pending-view .pan-ind { visibility: hidden !important; }
   line-height:1;}
 .peer-avatar.peer-overflow{background:var(--muted);font-size:.62rem;}
 .peers-counts{font-size:.7rem;color:var(--muted);margin-left:8px;white-space:nowrap;}
+
+/* Cooperative viewer (logged-in member with role='viewer') — read-only.
+   Drawer / pan / mode toolbars stay accessible but every editing affordance
+   is greyed-out and pointer-events:none so nothing can be modified. */
+body.coop-viewer #sketch,
+body.coop-viewer .note-canvas,
+body.coop-viewer .note-head,
+body.coop-viewer .note textarea,
+body.coop-viewer .resize-handle { pointer-events:none !important; }
+body.coop-viewer .corner #drawModeBtn,
+body.coop-viewer .corner #textModeBtn,
+body.coop-viewer .corner #noteModeBtn,
+body.coop-viewer #addNoteBtn,
+body.coop-viewer #clearSketch,
+body.coop-viewer #resetBtn,
+body.coop-viewer #importFile,
+body.coop-viewer .vis-btn,
+body.coop-viewer .d-acts,
+body.coop-viewer .preset-btn,
+body.coop-viewer #applySize { opacity:.45;pointer-events:none;cursor:not-allowed; }
+
+/* Small read-only badge near the peers stack */
+.readonly-pill{position:fixed;top:48px;left:50%;transform:translateX(-50%);z-index:37;
+  display:none;align-items:center;gap:5px;padding:3px 10px;
+  background:var(--surface);border:1px solid var(--border);border-radius:999px;
+  box-shadow:var(--ssoft);font-size:.7rem;font-weight:600;color:var(--muted);
+  backdrop-filter:blur(10px);}
+body.coop-viewer .readonly-pill{display:flex;}
 </style>
 <script>
 // Run before the main IIFE so the user never sees a flash of stale board/list data
@@ -328,7 +356,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.6.0</div>
+<div class="version">v.1.6.1</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
@@ -442,6 +470,7 @@ if (new URLSearchParams(location.search).get('board')) {
 
 <!-- Peers (online users on cooperative board) -->
 <div class="peers-stack" id="peersStack" aria-label="Utenti online"></div>
+<div class="readonly-pill" aria-label="Sola lettura">👁 Sola lettura</div>
 
 <div class="view-banner" id="viewBanner">
   <span style="opacity:.55;font-size:.9rem;">👁</span>
