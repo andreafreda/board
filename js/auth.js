@@ -16,6 +16,7 @@ import {
   sbListMembers, sbAddMember, sbUpdateMemberRole, sbRemoveMember,
 } from './db.js';
 import { setUserGetter, syncCollabChannel, leaveCollab } from './collab.js';
+import { setLoggedIn, beginSave, endSave } from './status.js';
 
 const GOOGLE_SVG = `<svg width="20" height="20" viewBox="0 0 24 24">
   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -34,14 +35,21 @@ setUserGetter(getCurrentUser);
 let sbSaveTimer = null;
 async function doSbSave() {
   if (!currentUser) return;
-  const client = await getClient();
-  syncActiveBoard();
-  const b = state.boards.find((bd) => bd.id === state.activeBoardId);
-  if (!b) return;
-  // Defensive role default: if myRole is missing the board is treated as our
-  // own (we'd never have loaded it otherwise), so 'owner'.
-  const role = b.myRole || 'owner';
-  await sbSaveActiveBoard(client, currentUser.id, b, role);
+  beginSave();
+  try {
+    const client = await getClient();
+    syncActiveBoard();
+    const b = state.boards.find((bd) => bd.id === state.activeBoardId);
+    if (!b) return;
+    // Defensive role default: if myRole is missing the board is treated as our
+    // own (we'd never have loaded it otherwise), so 'owner'.
+    const role = b.myRole || 'owner';
+    await sbSaveActiveBoard(client, currentUser.id, b, role);
+  } catch (err) {
+    console.error('Cloud save failed:', err);
+  } finally {
+    endSave();
+  }
 }
 function scheduleSbSave() {
   clearTimeout(sbSaveTimer);
@@ -63,12 +71,14 @@ function renderAuthChrome(session) {
       ? `<img src="${avatar}" alt="" style="width:100%;height:100%;border-radius:999px;object-fit:cover;">`
       : name.charAt(0).toUpperCase();
     if (dom.userName) dom.userName.textContent = name;
+    setLoggedIn(true);
   } else {
     currentUser = null;
     dom.userRow.style.display  = 'none';
     dom.guestRow.style.display = '';
     dom.googleBtn.disabled = false;
     dom.googleBtn.innerHTML = GOOGLE_SVG;
+    setLoggedIn(false);
   }
 }
 

@@ -87,6 +87,9 @@ export const dom = {
   // Live cursors layer (inside #board)
   cursorsLayer:  $('cursorsLayer'),
 
+  // Cloud sync status pill
+  statusBadge:   $('statusBadge'),
+
   // Confirm popup
   confirmPop:  $('confirmPop'),
   confirmMsg:  $('confirmMsg'),

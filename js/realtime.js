@@ -24,6 +24,8 @@ export const TRAFFIC = {
 };
 export function setTrafficConfig(partial) { Object.assign(TRAFFIC, partial); }
 
+import { setChannelConnected } from './status.js';
+
 // ── Stable color for a user id (for presence avatars / cursors) ─────
 const PRESENCE_COLORS = [
   '#E14B5C', '#F08C2D', '#F0BB22', '#41C467', '#23B8B8',
@@ -114,7 +116,11 @@ export async function joinBoardChannel(client, boardId, me, onEvent) {
   });
 
   await _channel.subscribe(async (status) => {
+    // Status is one of: SUBSCRIBED, CHANNEL_ERROR, TIMED_OUT, CLOSED.
+    // Supabase auto-reconnects the underlying WebSocket; subscribe fires
+    // again with SUBSCRIBED on reconnect, so we re-track presence.
     if (status === 'SUBSCRIBED') {
+      setChannelConnected(true);
       await _channel.track({
         name:   me.name   || '',
         avatar: me.avatar || '',
@@ -122,12 +128,16 @@ export async function joinBoardChannel(client, boardId, me, onEvent) {
         role:   me.role   || 'viewer',
         joined_at: Date.now(),
       });
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      setChannelConnected(false);
     }
   });
 }
 
 export async function leaveBoardChannel() {
   clearPendingBroadcasts();
+  // Reset the channel-down flag — we're intentionally leaving, not crashing
+  setChannelConnected(true);
   if (!_channel) return;
   try {
     await _channel.untrack();

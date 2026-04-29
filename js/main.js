@@ -29,6 +29,7 @@ import {
 import { initAuth, renderAuth, getCurrentUser } from './auth.js';
 import { getClient } from './db.js';
 import { loadPublicBoard } from './share.js';
+import { statusInit } from './status.js';
 
 // ── Wire cross-module hooks ─────────────────────────────────────────
 // applyBoardSize() needs to call renderNotes + redrawBoard but board.js
@@ -64,6 +65,7 @@ initDrawSlider();
 initTxtSlider();
 initViewModeExitButton();
 initAuth();
+statusInit();
 initialRender();
 
 // ── Bootstrap (auth + optional view mode) ──────────────────────────

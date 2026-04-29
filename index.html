@@ -320,6 +320,19 @@ html.pending-view .pan-ind { visibility: hidden !important; }
   padding:2px 6px;border-radius:5px;white-space:nowrap;line-height:1.2;
   margin-top:14px;box-shadow:0 1px 3px rgba(0,0,0,.18);}
 
+/* Cloud sync status pill (only shown when logged in) */
+.status-badge{position:fixed;top:78px;left:10px;z-index:30;
+  display:none;align-items:center;gap:4px;
+  font-size:.62rem;font-weight:700;padding:.18rem .5rem;border-radius:999px;
+  background:var(--surface);border:1px solid var(--border);box-shadow:var(--ssoft);
+  user-select:none;pointer-events:none;white-space:nowrap;
+  backdrop-filter:blur(8px);}
+.status-badge.on{display:inline-flex;}
+.status-badge.saved  {color:#16a34a;}
+.status-badge.saving {color:#ea580c;}
+.status-badge.offline{color:var(--danger);
+  border-color:color-mix(in srgb,var(--danger) 35%,var(--border));}
+
 /* Cooperative viewer (logged-in member with role='viewer') — read-only.
    Drawer / pan / mode toolbars stay accessible but every editing affordance
    is greyed-out and pointer-events:none so nothing can be modified. */
@@ -371,7 +384,8 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.6.5</div>
+<div class="version">v.1.6.6</div>
+<div class="status-badge" id="statusBadge"></div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
