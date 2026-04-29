@@ -40,6 +40,8 @@ export function colorForUser(userId) {
 let _channel = null;
 let _currentBoardId = null;
 let _meId = null;
+let _meName = null;
+let _meColor = null;
 let _onEvent = () => {};
 
 /**
@@ -56,7 +58,9 @@ export async function joinBoardChannel(client, boardId, me, onEvent) {
   await leaveBoardChannel();
 
   _currentBoardId = boardId;
-  _meId = me.userId;
+  _meId    = me.userId;
+  _meName  = me.name  || '';
+  _meColor = me.color || colorForUser(me.userId);
   _onEvent = onEvent || (() => {});
 
   _channel = client.channel(`board:${boardId}`, {
@@ -101,6 +105,12 @@ export async function joinBoardChannel(client, boardId, me, onEvent) {
   _channel.on('broadcast', { event: 'stroke:end' }, ({ payload }) => {
     if (!payload) return;
     _onEvent({ type: 'stroke:end', ...payload });
+  });
+
+  // ── Broadcast: cursor (commit 2.4) ─────────────────────────────────
+  _channel.on('broadcast', { event: 'cursor' }, ({ payload }) => {
+    if (!payload) return;
+    _onEvent({ type: 'cursor', ...payload });
   });
 
   await _channel.subscribe(async (status) => {
@@ -199,6 +209,8 @@ function clearPendingBroadcasts() {
   if (_strokeBatch.timer) { clearTimeout(_strokeBatch.timer); _strokeBatch.timer = null; }
   _strokeBatch.strokeId = null;
   _strokeBatch.points = [];
+  if (_cursorTimer) { clearTimeout(_cursorTimer); _cursorTimer = null; }
+  _cursorPending = null;
 }
 
 // ── Stroke broadcast: trailing-edge batch of points ──────────────────
@@ -263,5 +275,28 @@ export function broadcastStrokeEnd(strokeId, target, allPoints, meta) {
   });
 }
 
-// ── Cursor broadcast (TODO 2.4) ──────────────────────────────────────
-export function broadcastCursor(_x, _y) { /* TODO 2.4 */ }
+// ── Cursor broadcast: trailing-edge throttle ─────────────────────────
+// Coordinates are BOARD-local (independent of pan) so each peer can
+// translate them through their own pan offset on render. Identity
+// (name + colour) is included in every payload so a receiver who joined
+// after the sender doesn't have to wait for a presence sync to label
+// the cursor.
+let _cursorTimer = null;
+let _cursorPending = null;
+export function broadcastCursor(x, y) {
+  if (!_channel || !_meId) return;
+  _cursorPending = { x, y };
+  if (_cursorTimer) return;
+  _cursorTimer = setTimeout(() => {
+    _cursorTimer = null;
+    if (!_channel || !_cursorPending) return;
+    _channel.send({
+      type: 'broadcast', event: 'cursor',
+      payload: {
+        x: _cursorPending.x, y: _cursorPending.y,
+        userId: _meId, name: _meName, color: _meColor,
+      },
+    });
+    _cursorPending = null;
+  }, TRAFFIC.cursorThrottleMs);
+}

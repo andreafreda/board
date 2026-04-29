@@ -84,6 +84,9 @@ export const dom = {
   // Peers (presence avatar stack on cooperative boards)
   peersStack:    $('peersStack'),
 
+  // Live cursors layer (inside #board)
+  cursorsLayer:  $('cursorsLayer'),
+
   // Confirm popup
   confirmPop:  $('confirmPop'),
   confirmMsg:  $('confirmMsg'),

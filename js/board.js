@@ -6,6 +6,7 @@ import { dom } from './dom.js';
 import { state, save, isViewMode, setViewMode, uid } from './state.js';
 import {
   strokeStart, strokePoint, broadcastStrokeEnd,
+  broadcastCursor,
 } from './realtime.js';
 
 // ── Sketch canvas drawing context ───────────────────────────────────
@@ -86,6 +87,11 @@ export function initPan() {
   }, { passive: true });
 
   dom.viewport.addEventListener('pointermove', (e) => {
+    // Broadcast cursor on every move (throttled internally) regardless of
+    // whether we're panning — peers see the pointer wherever it goes.
+    // Coordinates: viewport client coords minus our pan = board-local.
+    broadcastCursor(e.clientX - state.panX, e.clientY - state.panY);
+
     if (!panning) return;
     state.panX = panOrigin.x + (e.clientX - panStart.x);
     state.panY = panOrigin.y + (e.clientY - panStart.y);

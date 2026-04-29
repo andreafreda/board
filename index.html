@@ -307,6 +307,19 @@ html.pending-view .pan-ind { visibility: hidden !important; }
 .peer-avatar.peer-overflow{background:var(--muted);font-size:.62rem;}
 .peers-counts{font-size:.7rem;color:var(--muted);margin-left:8px;white-space:nowrap;}
 
+/* Live cursors layer — sits inside #board so it inherits the pan transform */
+.cursors-layer{position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:6;overflow:visible;}
+.peer-cursor{position:absolute;top:0;left:0;display:flex;align-items:flex-start;gap:3px;
+  pointer-events:none;will-change:transform;
+  transition:transform 80ms linear,opacity .25s;
+  opacity:0;}
+.peer-cursor.on{opacity:1;}
+.peer-cursor svg{flex-shrink:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25));}
+.peer-cursor-name{background:var(--c);color:#fff;font-size:.62rem;font-weight:600;
+  padding:2px 6px;border-radius:5px;white-space:nowrap;line-height:1.2;
+  margin-top:14px;box-shadow:0 1px 3px rgba(0,0,0,.18);}
+
 /* Cooperative viewer (logged-in member with role='viewer') — read-only.
    Drawer / pan / mode toolbars stay accessible but every editing affordance
    is greyed-out and pointer-events:none so nothing can be modified. */
@@ -349,6 +362,8 @@ if (new URLSearchParams(location.search).get('board')) {
   <div id="board">
     <canvas class="draw-layer" id="sketch"></canvas>
     <div class="notes-layer" id="notesLayer"></div>
+    <!-- Live cursors of cooperative peers — rides the board's pan transform -->
+    <div class="cursors-layer" id="cursorsLayer"></div>
   </div>
 </div>
 
@@ -356,7 +371,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.6.4</div>
+<div class="version">v.1.6.5</div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>

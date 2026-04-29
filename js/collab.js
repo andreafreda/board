@@ -14,6 +14,9 @@ import { applyRemoteNoteUpsert, applyRemoteNoteDelete } from './notes.js';
 import {
   applyRemoteStrokePts, applyRemoteStrokeEnd, clearRemoteLiveStrokes,
 } from './board.js';
+import {
+  applyRemoteCursor, reconcileCursors, clearAllCursors,
+} from './cursors.js';
 
 // Apply / clear the cooperative-viewer UI lockout based on the active board's
 // myRole. Idempotent. Called from syncCollabChannel which is invoked on every
@@ -51,6 +54,7 @@ export async function syncCollabChannel() {
       await leaveBoardChannel();
       clearPeers();
       clearRemoteLiveStrokes();
+      clearAllCursors();
       return;
     }
 
@@ -66,12 +70,15 @@ export async function syncCollabChannel() {
 
     await joinBoardChannel(client, b.id, me, (event) => {
       switch (event.type) {
-        case 'presence':    renderPeers(event.peers);          break;
+        case 'presence':
+          renderPeers(event.peers);
+          reconcileCursors(event.peers);  // drop cursors of users who left
+          break;
         case 'note:upsert': applyRemoteNoteUpsert(event.note); break;
         case 'note:delete': applyRemoteNoteDelete(event.id);   break;
         case 'stroke:pts':  applyRemoteStrokePts(event);       break;
         case 'stroke:end':  applyRemoteStrokeEnd(event);       break;
-        // cursor wired in 2.4
+        case 'cursor':      applyRemoteCursor(event);          break;
       }
     });
   } finally {
