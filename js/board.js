@@ -3,7 +3,10 @@
 // ════════════════════════════════════════════════════════════════════
 
 import { dom } from './dom.js';
-import { state, save, isViewMode, setViewMode } from './state.js';
+import { state, save, isViewMode, setViewMode, uid } from './state.js';
+import {
+  strokeStart, strokePoint, broadcastStrokeEnd,
+} from './realtime.js';
 
 // ── Sketch canvas drawing context ───────────────────────────────────
 const ctx = dom.sketch.getContext('2d');
@@ -111,20 +114,71 @@ export function initSketchCanvas() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
+// In-progress strokes from peers, keyed by strokeId. They live here only
+// until their `stroke:end` arrives — at that point we move the finalised
+// stroke into state.strokes (with _ownerId tag so save() ignores it).
+const _remoteLiveStrokes = new Map();
+
+function _drawStroke(s) {
+  if (!s || !s.points || s.points.length < 1) return;
+  ctx.globalCompositeOperation = s.eraser ? 'destination-out' : 'source-over';
+  ctx.strokeStyle = s.eraser ? 'rgba(0,0,0,1)' : (s.color || '#1f2328');
+  ctx.lineWidth   = s.size || 7;
+  ctx.beginPath();
+  ctx.moveTo(s.points[0].x, s.points[0].y);
+  for (let i = 1; i < s.points.length; i++) {
+    ctx.lineTo(s.points[i].x, s.points[i].y);
+  }
+  if (s.points.length === 1) {
+    // A dot — degenerate "line" so it actually paints
+    ctx.lineTo(s.points[0].x + 0.01, s.points[0].y + 0.01);
+  }
+  ctx.stroke();
+}
+
 export function redrawBoard() {
   ctx.clearRect(0, 0, state.boardW, state.boardH);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  (state.strokes || []).forEach((s) => {
-    if (!s.points || s.points.length < 2) return;
-    ctx.globalCompositeOperation = s.eraser ? 'destination-out' : 'source-over';
-    ctx.strokeStyle = s.eraser ? 'rgba(0,0,0,1)' : (s.color || '#1f2328');
-    ctx.lineWidth   = s.size || 7;
-    ctx.beginPath();
-    ctx.moveTo(s.points[0].x, s.points[0].y);
-    s.points.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
-    ctx.stroke();
-  });
+  (state.strokes || []).forEach(_drawStroke);
+  // Render any in-progress remote strokes on top
+  _remoteLiveStrokes.forEach(_drawStroke);
   ctx.globalCompositeOperation = 'source-over';
+}
+
+// ── Remote stroke broadcasts (target='board' only — note canvas is
+//    synced via the existing note:upsert flow at pointerup) ──────────
+export function applyRemoteStrokePts(payload) {
+  if (payload.target !== 'board') return;
+  let s = _remoteLiveStrokes.get(payload.strokeId);
+  if (!s) {
+    s = {
+      strokeId: payload.strokeId,
+      color: payload.color, size: payload.size, eraser: payload.eraser,
+      points: [],
+    };
+    _remoteLiveStrokes.set(payload.strokeId, s);
+  }
+  if (Array.isArray(payload.points)) s.points.push(...payload.points);
+  redrawBoard();
+}
+
+export function applyRemoteStrokeEnd(payload) {
+  if (payload.target !== 'board') return;
+  _remoteLiveStrokes.delete(payload.strokeId);
+  // Commit the finalised stroke into state.strokes with _ownerId tag.
+  // Filter at save time keeps it out of OUR strokes row (the originator
+  // already wrote it to their own row).
+  state.strokes.push({
+    strokeId: payload.strokeId,
+    color: payload.color, size: payload.size, eraser: payload.eraser,
+    points: payload.points || [],
+    _ownerId: payload.owner || null,
+  });
+  redrawBoard();
+}
+
+export function clearRemoteLiveStrokes() {
+  _remoteLiveStrokes.clear();
 }
 
 function sketchPos(e) {
@@ -139,24 +193,40 @@ export function initSketchHandlers() {
     if (!state.drawMode) return;
     drawing = true;
     dom.sketch.setPointerCapture(e.pointerId);
+    const startPt = sketchPos(e);
     boardStroke = {
-      points: [sketchPos(e)],
-      color:  state.penColor,
-      size:   state.eraser ? state.eraserSize : state.penSize,
-      eraser: state.eraser,
+      strokeId: uid(),
+      points:   [startPt],
+      color:    state.penColor,
+      size:     state.eraser ? state.eraserSize : state.penSize,
+      eraser:   state.eraser,
     };
     state.strokes.push(boardStroke);
     redrawBoard();
+
+    // Realtime: announce stroke start + first point
+    strokeStart(boardStroke.strokeId, 'board', boardStroke);
+    strokePoint(startPt);
   });
 
   dom.sketch.addEventListener('pointermove', (e) => {
     if (!drawing || !boardStroke) return;
-    boardStroke.points.push(sketchPos(e));
+    const pt = sketchPos(e);
+    boardStroke.points.push(pt);
     redrawBoard();
+    strokePoint(pt);
   });
 
   window.addEventListener('pointerup', () => {
-    if (drawing) { drawing = false; boardStroke = null; save(); }
+    if (!drawing) return;
+    drawing = false;
+    if (boardStroke) {
+      // Final authoritative payload — receivers replace any in-progress
+      // copy with this one to guarantee no points were dropped on the way.
+      broadcastStrokeEnd(boardStroke.strokeId, 'board', boardStroke.points, boardStroke);
+    }
+    boardStroke = null;
+    save();
   });
 }
 

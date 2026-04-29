@@ -93,6 +93,16 @@ export async function joinBoardChannel(client, boardId, me, onEvent) {
     _onEvent({ type: 'note:delete', id: payload.id });
   });
 
+  // ── Broadcast: strokes (commit 2.3) ────────────────────────────────
+  _channel.on('broadcast', { event: 'stroke:pts' }, ({ payload }) => {
+    if (!payload) return;
+    _onEvent({ type: 'stroke:pts', ...payload });
+  });
+  _channel.on('broadcast', { event: 'stroke:end' }, ({ payload }) => {
+    if (!payload) return;
+    _onEvent({ type: 'stroke:end', ...payload });
+  });
+
   await _channel.subscribe(async (status) => {
     if (status === 'SUBSCRIBED') {
       await _channel.track({
@@ -186,9 +196,72 @@ export function flushPendingNote(id) {
 function clearPendingBroadcasts() {
   _pendingNoteBcasts.forEach((p) => clearTimeout(p.timer));
   _pendingNoteBcasts.clear();
+  if (_strokeBatch.timer) { clearTimeout(_strokeBatch.timer); _strokeBatch.timer = null; }
+  _strokeBatch.strokeId = null;
+  _strokeBatch.points = [];
 }
 
-// (Stubs for upcoming commits)
-export function broadcastStrokePts(_payload) { /* TODO 2.3 */ }
-export function broadcastStrokeEnd(_payload) { /* TODO 2.3 */ }
-export function broadcastCursor(_x, _y)      { /* TODO 2.4 */ }
+// ── Stroke broadcast: trailing-edge batch of points ──────────────────
+// During a stroke the sender pushes points one-by-one; we batch them and
+// flush every TRAFFIC.strokeBatchMs (default 33ms ≈ 30Hz) so the channel
+// doesn't get one message per pointermove (~120Hz on modern devices).
+const _strokeBatch = {
+  strokeId: null, target: null,
+  color: null, size: null, eraser: false,
+  points: [],
+  timer: null,
+};
+
+function _flushStrokeBatch() {
+  _strokeBatch.timer = null;
+  if (!_channel || !_strokeBatch.strokeId || !_strokeBatch.points.length) return;
+  _channel.send({
+    type: 'broadcast', event: 'stroke:pts',
+    payload: {
+      strokeId: _strokeBatch.strokeId,
+      target:   _strokeBatch.target,
+      color:    _strokeBatch.color,
+      size:     _strokeBatch.size,
+      eraser:   _strokeBatch.eraser,
+      points:   _strokeBatch.points.splice(0),
+    },
+  });
+}
+
+export function strokeStart(strokeId, target, meta) {
+  // Cancel any leftover batch state from a previous stroke
+  if (_strokeBatch.timer) { clearTimeout(_strokeBatch.timer); _strokeBatch.timer = null; }
+  _strokeBatch.strokeId = strokeId;
+  _strokeBatch.target   = target;
+  _strokeBatch.color    = meta.color;
+  _strokeBatch.size     = meta.size;
+  _strokeBatch.eraser   = !!meta.eraser;
+  _strokeBatch.points   = [];
+}
+
+export function strokePoint(point) {
+  if (!_channel || !_strokeBatch.strokeId) return;
+  _strokeBatch.points.push(point);
+  if (!_strokeBatch.timer) {
+    _strokeBatch.timer = setTimeout(_flushStrokeBatch, TRAFFIC.strokeBatchMs);
+  }
+}
+
+export function broadcastStrokeEnd(strokeId, target, allPoints, meta) {
+  if (!_channel) return;
+  // Flush any pending in-flight batch before declaring the stroke done
+  _flushStrokeBatch();
+  _strokeBatch.strokeId = null;
+  _channel.send({
+    type: 'broadcast', event: 'stroke:end',
+    payload: {
+      strokeId, target,
+      color: meta.color, size: meta.size, eraser: !!meta.eraser,
+      points: allPoints,
+      owner: _meId,
+    },
+  });
+}
+
+// ── Cursor broadcast (TODO 2.4) ──────────────────────────────────────
+export function broadcastCursor(_x, _y) { /* TODO 2.4 */ }

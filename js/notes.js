@@ -233,7 +233,13 @@ function makeNote(note) {
     ns.points.push(np(e));
     redrawNoteCanvas(nc, note);
   });
-  nc.addEventListener('pointerup',     () => { if (nd) { nd = false; ns = null; save(); } });
+  nc.addEventListener('pointerup', () => {
+    if (!nd) return;
+    nd = false; ns = null; save();
+    // Sync the new stroke to peers as part of the note's full state
+    // (broadcast-on-end keeps note-canvas live preview out of scope).
+    broadcastNoteUpsert(note);
+  });
   nc.addEventListener('pointercancel', () => { nd = false; ns = null; });
 
   if (state.drawMode && !state.eraser) nc.classList.add('draw-on');
