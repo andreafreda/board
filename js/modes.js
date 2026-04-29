@@ -13,6 +13,9 @@ import {
 } from './state.js';
 import { makeVSlider } from './sliders.js';
 import {
+  scheduleNoteUpsertThrottled, broadcastNoteUpsert, flushPendingNote,
+} from './realtime.js';
+import {
   getActiveNote, deactivateNote,
   setOnNoteToolbar, setOnTextToolbarHidden,
   addCenteredNote,
@@ -78,6 +81,7 @@ export function initTxtSlider() {
       if (!an) return;
       an.note.fontSize = v;
       an.el.querySelector('textarea').style.fontSize = v + 'px';
+      scheduleNoteUpsertThrottled(an.note);
     },
     onUpdate: () => {
       const sz = getActiveNote() ? getActiveNote().note.fontSize : 15;
@@ -179,6 +183,7 @@ function renderTextToolbar(note) {
         an.el.querySelector('textarea').style.color = col;
       }
       renderTextToolbar(note); save();
+      broadcastNoteUpsert(note);
     });
     dom.txtColors.appendChild(b);
   });

@@ -83,7 +83,15 @@ export async function joinBoardChannel(client, boardId, me, onEvent) {
   _channel.on('presence', { event: 'join' },  emitPresence);
   _channel.on('presence', { event: 'leave' }, emitPresence);
 
-  // (Broadcast event listeners get registered in commits 2.2-2.4 here.)
+  // ── Broadcast: notes (commit 2.2) ─────────────────────────────────
+  _channel.on('broadcast', { event: 'note:upsert' }, ({ payload }) => {
+    if (!payload) return;
+    _onEvent({ type: 'note:upsert', note: payload });
+  });
+  _channel.on('broadcast', { event: 'note:delete' }, ({ payload }) => {
+    if (!payload) return;
+    _onEvent({ type: 'note:delete', id: payload.id });
+  });
 
   await _channel.subscribe(async (status) => {
     if (status === 'SUBSCRIBED') {
@@ -99,6 +107,7 @@ export async function joinBoardChannel(client, boardId, me, onEvent) {
 }
 
 export async function leaveBoardChannel() {
+  clearPendingBroadcasts();
   if (!_channel) return;
   try {
     await _channel.untrack();
@@ -113,9 +122,73 @@ export async function leaveBoardChannel() {
 export function getCurrentBoardChannelId() { return _currentBoardId; }
 export function getChannel() { return _channel; }
 
-// ── Broadcast helpers (stubs for now — real implementations in 2.2-2.4)
-export function broadcastNoteUpsert(_note)        { /* TODO 2.2 */ }
-export function broadcastNoteDelete(_id)          { /* TODO 2.2 */ }
-export function broadcastStrokePts(_payload)      { /* TODO 2.3 */ }
-export function broadcastStrokeEnd(_payload)      { /* TODO 2.3 */ }
-export function broadcastCursor(_x, _y)           { /* TODO 2.4 */ }
+// ── Broadcast helpers ────────────────────────────────────────────────
+// Note: peers strip our private `_ownerId` tag from payloads — they don't
+// need to know who originally created a row, only who's broadcasting now.
+
+function stripPrivate(o) {
+  if (!o || typeof o !== 'object') return o;
+  const { _ownerId, ...rest } = o;
+  return rest;
+}
+
+export function broadcastNoteUpsert(note) {
+  if (!_channel || !note?.id) return;
+  _channel.send({ type: 'broadcast', event: 'note:upsert', payload: stripPrivate(note) });
+}
+
+export function broadcastNoteDelete(id) {
+  if (!_channel || !id) return;
+  _channel.send({ type: 'broadcast', event: 'note:delete', payload: { id } });
+}
+
+// Per-note pending broadcast queue.
+//   throttled: trailing-edge — first call schedules a send in `ms`, subsequent
+//              calls within the window just refresh the data, no new timer.
+//   debounced: leading + trailing reset — every call resets the timer, send
+//              only fires after `ms` of silence (good for typing).
+const _pendingNoteBcasts = new Map(); // id → { note, timer, kind }
+
+function _schedule(note, kind, ms) {
+  if (!_channel || !note?.id) return;
+  const id = note.id;
+  const existing = _pendingNoteBcasts.get(id);
+  if (kind === 'throttle') {
+    if (existing) {
+      // Just refresh data; let the existing timer fire as scheduled
+      existing.note = note;
+      return;
+    }
+  } else { // debounce
+    if (existing) clearTimeout(existing.timer);
+  }
+  const timer = setTimeout(() => {
+    const p = _pendingNoteBcasts.get(id);
+    _pendingNoteBcasts.delete(id);
+    if (p) broadcastNoteUpsert(p.note);
+  }, ms);
+  _pendingNoteBcasts.set(id, { note, timer, kind });
+}
+
+export const scheduleNoteUpsertThrottled = (note) =>
+  _schedule(note, 'throttle', TRAFFIC.noteDragThrottleMs);
+export const scheduleNoteUpsertDebounced = (note) =>
+  _schedule(note, 'debounce', TRAFFIC.noteTextDebounceMs);
+
+export function flushPendingNote(id) {
+  const existing = _pendingNoteBcasts.get(id);
+  if (!existing) return;
+  clearTimeout(existing.timer);
+  _pendingNoteBcasts.delete(id);
+  broadcastNoteUpsert(existing.note);
+}
+
+function clearPendingBroadcasts() {
+  _pendingNoteBcasts.forEach((p) => clearTimeout(p.timer));
+  _pendingNoteBcasts.clear();
+}
+
+// (Stubs for upcoming commits)
+export function broadcastStrokePts(_payload) { /* TODO 2.3 */ }
+export function broadcastStrokeEnd(_payload) { /* TODO 2.3 */ }
+export function broadcastCursor(_x, _y)      { /* TODO 2.4 */ }

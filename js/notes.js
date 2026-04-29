@@ -4,6 +4,18 @@
 
 import { dom } from './dom.js';
 import { state, save, uid, clone, NOTE_COLOR_MAP } from './state.js';
+import {
+  broadcastNoteUpsert, broadcastNoteDelete,
+  scheduleNoteUpsertThrottled, scheduleNoteUpsertDebounced,
+  flushPendingNote,
+} from './realtime.js';
+
+// Set to true while applying an inbound peer broadcast — guard handlers from
+// re-broadcasting and triggering an echo loop. (Programmatic style/value
+// changes don't fire pointer/input events, so we mainly need this for the
+// .value = ... case; defensive elsewhere.)
+let _applyingRemote = false;
+export const isApplyingRemote = () => _applyingRemote;
 
 // ── Active note (text-mode editing target) ──────────────────────────
 let activeNote = null;
@@ -105,9 +117,11 @@ function makeNote(note) {
   ta.style.color    = note.textColor;
   ta.style.fontSize = note.fontSize + 'px';
   ta.addEventListener('input', () => {
+    if (_applyingRemote) return;
     note.text = ta.value;
     note.updatedAt = Date.now();
     save();
+    scheduleNoteUpsertDebounced(note);
   });
 
   // Click body in text-mode → activate
@@ -130,6 +144,7 @@ function makeNote(note) {
       if (activeNote && activeNote.note.id === note.id) deactivateNote();
       renderNotes();
       save();
+      broadcastNoteDelete(note.id);
     });
   });
   el.querySelector('[data-action="dup"]').addEventListener('click', (e) => {
@@ -145,6 +160,7 @@ function makeNote(note) {
     state.notes.push(dup);
     renderNotes();
     save();
+    broadcastNoteUpsert(dup);
   });
 
   // Drag from the head
@@ -166,6 +182,7 @@ function makeNote(note) {
       note.y = Math.max(4, Math.min(state.boardH - note.h - 4, e.clientY - state.panY - drag.oy));
       el.style.left = note.x + 'px';
       el.style.top  = note.y + 'px';
+      scheduleNoteUpsertThrottled(note);
     }
     if (resizing && resizing.id === note.id) {
       note.w = Math.max(120, Math.min(state.boardW - note.x - 4, resizing.sw + (e.clientX - resizing.sx)));
@@ -173,11 +190,12 @@ function makeNote(note) {
       el.style.width  = note.w + 'px';
       el.style.height = note.h + 'px';
       resizeNoteCanvas(nc, note);
+      scheduleNoteUpsertThrottled(note);
     }
   });
   el.addEventListener('pointerup', () => {
-    if (drag && drag.id === note.id)     { drag = null;     el.classList.remove('dragging'); save(); }
-    if (resizing && resizing.id === note.id) { resizing = null; save(); }
+    if (drag && drag.id === note.id)         { drag = null;     el.classList.remove('dragging'); save(); flushPendingNote(note.id); broadcastNoteUpsert(note); }
+    if (resizing && resizing.id === note.id) { resizing = null; save(); flushPendingNote(note.id); broadcastNoteUpsert(note); }
   });
 
   // Resize handle (SE corner)
@@ -230,12 +248,81 @@ export function renderNotes() {
   state.notes.forEach((n) => dom.notesLayer.appendChild(makeNote(n)));
 }
 
+// ════════════════════════════════════════════════════════════════════
+//   Remote broadcasts → local state + DOM (no save, no re-broadcast)
+// ════════════════════════════════════════════════════════════════════
+// In-place DOM update for a known note id — avoids destroying the article
+// element and triggering a full notesLayer rebuild on every peer event.
+function updateNoteDom(note) {
+  const el = dom.notesLayer.querySelector(`.note[data-id="${note.id}"]`);
+  if (!el) { renderNotes(); return; }
+
+  el.style.left   = note.x + 'px';
+  el.style.top    = note.y + 'px';
+  el.style.width  = note.w + 'px';
+  el.style.height = note.h + 'px';
+  el.style.setProperty('--rot', (note.rot || 0) + 'deg');
+  el.style.background = NOTE_COLOR_MAP[note.color] || NOTE_COLOR_MAP.yellow;
+
+  const ta = el.querySelector('textarea');
+  if (ta) {
+    // Don't trample text the user is currently typing
+    if (document.activeElement !== ta && ta.value !== note.text) {
+      ta.value = note.text || '';
+    }
+    ta.style.color    = note.textColor || '#1f2328';
+    ta.style.fontSize = (note.fontSize || 15) + 'px';
+  }
+
+  // Resize the per-note canvas + redraw (covers live stroke updates from 2.3)
+  const nc = el.querySelector('canvas.note-canvas');
+  if (nc) resizeNoteCanvas(nc, note);
+}
+
+export function applyRemoteNoteUpsert(noteData) {
+  if (!noteData || !noteData.id) return;
+  _applyingRemote = true;
+  try {
+    const idx = state.notes.findIndex((n) => n.id === noteData.id);
+    if (idx >= 0) {
+      const existing = state.notes[idx];
+      // Preserve our local _ownerId tag — the broadcaster doesn't include it
+      const ownerTag = existing._ownerId;
+      Object.assign(existing, noteData);
+      if (ownerTag !== undefined) existing._ownerId = ownerTag;
+      updateNoteDom(existing);
+    } else {
+      // New note from a peer — append + full re-render so all event
+      // handlers wire correctly via makeNote().
+      state.notes.push({ ...noteData });
+      renderNotes();
+    }
+  } finally { _applyingRemote = false; }
+}
+
+export function applyRemoteNoteDelete(id) {
+  if (!id) return;
+  _applyingRemote = true;
+  try {
+    const idx = state.notes.findIndex((n) => n.id === id);
+    if (idx < 0) return;
+    state.notes.splice(idx, 1);
+    if (activeNote && activeNote.note.id === id) {
+      // Drop the dangling reference and hide the text toolbar
+      activeNote = null;
+      _onTextToolbarHidden();
+    }
+    const el = dom.notesLayer.querySelector(`.note[data-id="${id}"]`);
+    if (el) el.remove();
+  } finally { _applyingRemote = false; }
+}
+
 // ── Add a new note centred in the current viewport ─────────────────
 export function addCenteredNote() {
   const vw = window.innerWidth, vh = window.innerHeight;
   const cx = Math.round(-state.panX + (vw / 2) - 105);
   const cy = Math.round(-state.panY + (vh / 2) - 90);
-  state.notes.push({
+  const note = {
     id: uid(), text: '', color: state.noteColor,
     x: Math.max(4, Math.min(state.boardW - 214, cx)),
     y: Math.max(4, Math.min(state.boardH - 184, cy)),
@@ -244,7 +331,9 @@ export function addCenteredNote() {
     textColor: '#1f2328', fontSize: 15,
     noteStrokes: [],
     updatedAt: Date.now(),
-  });
+  };
+  state.notes.push(note);
   renderNotes();
   save();
+  broadcastNoteUpsert(note);
 }

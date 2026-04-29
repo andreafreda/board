@@ -10,6 +10,7 @@ import { state, setReadOnly } from './state.js';
 import { joinBoardChannel, leaveBoardChannel, colorForUser } from './realtime.js';
 import { renderPeers, clearPeers } from './peers.js';
 import { exitAllModes } from './modes.js';
+import { applyRemoteNoteUpsert, applyRemoteNoteDelete } from './notes.js';
 
 // Apply / clear the cooperative-viewer UI lockout based on the active board's
 // myRole. Idempotent. Called from syncCollabChannel which is invoked on every
@@ -60,8 +61,12 @@ export async function syncCollabChannel() {
     };
 
     await joinBoardChannel(client, b.id, me, (event) => {
-      if (event.type === 'presence') renderPeers(event.peers);
-      // Other event types (note:*, stroke:*, cursor) wired in steps 2.2–2.4
+      switch (event.type) {
+        case 'presence':    renderPeers(event.peers);        break;
+        case 'note:upsert': applyRemoteNoteUpsert(event.note); break;
+        case 'note:delete': applyRemoteNoteDelete(event.id);   break;
+        // stroke:* and cursor wired in 2.3 / 2.4
+      }
     });
   } finally {
     _busy = false;
