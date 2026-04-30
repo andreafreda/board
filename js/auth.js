@@ -5,7 +5,7 @@
 import { dom } from './dom.js';
 import {
   state, isViewMode, syncActiveBoard, loadBoardIntoState, mkBoard,
-  setSaveHook, STORAGE_KEY,
+  setSaveHook, STORAGE_KEY, PREFS_KEY,
 } from './state.js';
 import { applyBoardSize } from './board.js';
 import { renderBoardList, renderPresets, setAuthHooks } from './drawer.js';
@@ -162,9 +162,14 @@ async function loadCloudBoardsForUser(session) {
 
 // ── Guest path: rehydrate from localStorage ─────────────────────────
 function restoreGuestBoardsFromLocalStorage() {
-  // Save current logged-in state to localStorage before switching to guest
-  syncActiveBoard();
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  // ⚠ SECURITY: do NOT persist the current (logged-in) state.boards into
+  // STORAGE_KEY before reading it back — that would leave the previous
+  // user's cloud boards accessible to anyone opening the browser as
+  // guest after a sign-out.
+  //
+  // Wipe PREFS_KEY too: its activeBoardId is a cloud uuid that no longer
+  // resolves once the user is signed out.
+  try { localStorage.removeItem(PREFS_KEY); } catch {}
 
   let raw = {};
   try { raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch {}
@@ -172,15 +177,19 @@ function restoreGuestBoardsFromLocalStorage() {
   if (!raw.boards?.length) {
     const b = {
       id: crypto.randomUUID(), name: 'Board',
-      width: raw.boardW || 1366, height: raw.boardH || 768,
+      width: 1366, height: 768,
       panX: 0, panY: 0,
-      notes: raw.notes || [], strokes: raw.strokes || [],
+      notes: [], strokes: [],
+      visibility: 'private',
     };
     raw.boards = [b]; raw.activeBoardId = b.id;
   }
   const active = raw.boards.find((b) => b.id === raw.activeBoardId) || raw.boards[0];
   state.boards = raw.boards;
   state.activeBoardId = active.id;
+  // Strip any private tags inherited from cloud-mode in-memory state
+  state.notes   = [];
+  state.strokes = [];
   loadBoardIntoState(active);
   applyBoardSize(active.width, active.height);
   renderBoardList();
