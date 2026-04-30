@@ -13,6 +13,7 @@ import { exitAllModes } from './modes.js';
 import { applyRemoteNoteUpsert, applyRemoteNoteDelete } from './notes.js';
 import {
   applyRemoteStrokePts, applyRemoteStrokeEnd, clearRemoteLiveStrokes,
+  applyRemoteBoardSize,
 } from './board.js';
 import {
   applyRemoteCursor, reconcileCursors, clearAllCursors,
@@ -79,6 +80,7 @@ export async function syncCollabChannel() {
         case 'stroke:pts':  applyRemoteStrokePts(event);       break;
         case 'stroke:end':  applyRemoteStrokeEnd(event);       break;
         case 'cursor':      applyRemoteCursor(event);          break;
+        case 'board:size':  applyRemoteBoardSize(event.width, event.height); break;
       }
     });
   } finally {

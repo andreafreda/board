@@ -115,6 +115,12 @@ export async function joinBoardChannel(client, boardId, me, onEvent) {
     _onEvent({ type: 'cursor', ...payload });
   });
 
+  // ── Broadcast: board resolution change ─────────────────────────────
+  _channel.on('broadcast', { event: 'board:size' }, ({ payload }) => {
+    if (!payload) return;
+    _onEvent({ type: 'board:size', width: payload.width, height: payload.height });
+  });
+
   await _channel.subscribe(async (status) => {
     // Status is one of: SUBSCRIBED, CHANNEL_ERROR, TIMED_OUT, CLOSED.
     // Supabase auto-reconnects the underlying WebSocket; subscribe fires
@@ -282,6 +288,16 @@ export function broadcastStrokeEnd(strokeId, target, allPoints, meta) {
       points: allPoints,
       owner: _meId,
     },
+  });
+}
+
+// ── Board resolution broadcast (low-frequency, immediate) ────────────
+export function broadcastBoardSize(w, h) {
+  if (!_channel) return;
+  if (!Number.isFinite(w) || !Number.isFinite(h)) return;
+  _channel.send({
+    type: 'broadcast', event: 'board:size',
+    payload: { width: Math.round(w), height: Math.round(h) },
   });
 }
 

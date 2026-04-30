@@ -187,6 +187,17 @@ export function clearRemoteLiveStrokes() {
   _remoteLiveStrokes.clear();
 }
 
+// Apply a remote resolution change. The active board's stored width/
+// height are updated too so the change persists in our local view —
+// the originator is also writing the boards row (or RPC), so on next
+// load we'll all converge.
+export function applyRemoteBoardSize(w, h) {
+  if (!Number.isFinite(w) || !Number.isFinite(h)) return;
+  const ab = state.boards.find((b) => b.id === state.activeBoardId);
+  if (ab) { ab.width = w; ab.height = h; }
+  applyBoardSize(w, h);
+}
+
 function sketchPos(e) {
   const r = dom.sketch.getBoundingClientRect();
   return { x: e.clientX - r.left, y: e.clientY - r.top };

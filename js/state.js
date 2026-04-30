@@ -90,17 +90,20 @@ function loadInitialState() {
 
   const s = { ...DEFAULTS, ...raw };
 
-  // Ensure at least one board exists and the active id points to it
+  // Ensure at least one board exists locally
   if (!s.boards?.length) {
     const b = mkBoard();
-    s.boards = [b]; s.activeBoardId = b.id;
+    s.boards = [b]; s.activeBoardId = s.activeBoardId || b.id;
   }
-  if (!s.boards.find(b => b.id === s.activeBoardId)) {
-    s.activeBoardId = s.boards[0].id;
-  }
+  // Don't reset activeBoardId if the id we have isn't in local boards —
+  // it could be a cloud board id from PREFS_KEY that renderAuth() will
+  // resolve once Supabase data arrives. Only fall back when truly missing.
+  if (!s.activeBoardId) s.activeBoardId = s.boards[0].id;
 
-  // Promote active board fields into the flat state for legacy code
-  const ab = s.boards.find(b => b.id === s.activeBoardId);
+  // Promote active board fields into the flat state for legacy code.
+  // If the id doesn't match anything local (cloud board id from prefs),
+  // start from the first local board — renderAuth will overwrite later.
+  const ab = s.boards.find(b => b.id === s.activeBoardId) || s.boards[0];
   s.boardW = ab.width;  s.boardH = ab.height;
   s.panX   = ab.panX || 0; s.panY = ab.panY || 0;
   s.notes  = ab.notes  || [];

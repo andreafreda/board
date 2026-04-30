@@ -19,6 +19,7 @@ import {
   setShowConfirm,
 } from './notes.js';
 import { syncCollabChannel } from './collab.js';
+import { broadcastBoardSize } from './realtime.js';
 
 // ── Auth bridge (set by auth.js) ────────────────────────────────────
 let _authHooks = {
@@ -439,6 +440,7 @@ export function renderPresets() {
       dom.boardH.value = p.h;
       applyBoardSize(p.w, p.h);
       renderPresets(); save();
+      broadcastBoardSize(p.w, p.h);
     });
     row.appendChild(b);
   });
@@ -453,6 +455,7 @@ function initSizeButtons() {
     applyBoardSize(w, h);
     renderPresets(); save();
     openDrawer(false);
+    broadcastBoardSize(w, h);
   });
   dom.centerBoard.addEventListener('click', () => {
     centerBoard();

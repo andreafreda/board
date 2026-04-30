@@ -35,7 +35,7 @@ import { statusInit } from './status.js';
 // applyBoardSize() needs to call renderNotes + redrawBoard but board.js
 // shouldn't import notes.js (would be a layering violation) — we inject
 // the side-effect here instead.
-setAfterApply(() => { renderNotes(); redrawBoard(); });
+setAfterApply(() => { renderNotes(); redrawBoard(); renderPresets(); });
 
 // modes.js needs to be able to close the drawer
 setDrawerToggle(openDrawer);
