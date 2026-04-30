@@ -246,13 +246,28 @@ export function initAuth() {
       );
       if (!popup) { window.location.href = data.url; return; }
 
-      // The onAuthStateChange listener installed in main.js will pick up
-      // SIGNED_IN once the popup completes — no need to manually call
-      // renderAuth here (which would just duplicate work).
-      const iv = setInterval(() => {
-        if (!popup.closed) return;
-        clearInterval(iv);
-      }, 600);
+      // Don't poll popup.closed — Chrome's Cross-Origin-Opener-Policy
+      // logs a warning every read. The onAuthStateChange listener in
+      // main.js fires SIGNED_IN once OAuth completes and renderAuthChrome
+      // re-renders into the user-card; the guest button gets hidden.
+      // If the user closes the popup WITHOUT signing in, we re-enable
+      // the button via a one-shot focus handler (when our window
+      // regains focus the popup is gone) plus a 90s safety fallback.
+      const restoreButton = () => {
+        if (currentUser) return; // already signed in — chrome was swapped
+        dom.googleBtn.disabled  = false;
+        dom.googleBtn.innerHTML = GOOGLE_SVG;
+      };
+      const onFocus = () => {
+        // Give onAuthStateChange a moment to land first
+        setTimeout(restoreButton, 800);
+        window.removeEventListener('focus', onFocus);
+      };
+      window.addEventListener('focus', onFocus);
+      setTimeout(() => {
+        window.removeEventListener('focus', onFocus);
+        restoreButton();
+      }, 90_000);
     } catch {
       await renderAuth(null);
     }
