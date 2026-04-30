@@ -90,6 +90,11 @@ export const dom = {
   // Cloud sync status pill
   statusBadge:   $('statusBadge'),
 
+  // Privacy / GDPR section in drawer
+  gdprSection:      $('gdprSection'),
+  exportAllBtn:     $('exportAllBtn'),
+  deleteAccountBtn: $('deleteAccountBtn'),
+
   // Confirm popup
   confirmPop:  $('confirmPop'),
   confirmMsg:  $('confirmMsg'),

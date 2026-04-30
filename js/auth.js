@@ -14,6 +14,7 @@ import {
   sbLoadBoards, sbCreateBoard, sbUpdateBoardName,
   sbDeleteBoard, sbUpdateVisibility, sbSaveActiveBoard,
   sbListMembers, sbAddMember, sbUpdateMemberRole, sbRemoveMember,
+  sbExportAllMyData, sbDeleteAllMyData,
 } from './db.js';
 import { setUserGetter, syncCollabChannel, leaveCollab } from './collab.js';
 import { setLoggedIn, beginSave, endSave } from './status.js';
@@ -205,6 +206,15 @@ export function initAuth() {
     sbAddMember:        async (id, email, role) => { const c = await getClient(); return sbAddMember(c, id, email, role); },
     sbUpdateMemberRole: async (id, email, role) => { const c = await getClient(); return sbUpdateMemberRole(c, id, email, role); },
     sbRemoveMember:     async (id, email)       => { const c = await getClient(); return sbRemoveMember(c, id, email); },
+    // GDPR
+    sbExportAllMyData:  async () => {
+      const c = await getClient();
+      return sbExportAllMyData(c, currentUser?.id, currentUser?.email);
+    },
+    sbDeleteAllMyData:  async () => {
+      const c = await getClient();
+      return sbDeleteAllMyData(c, currentUser?.id, currentUser?.email);
+    },
   });
 
   dom.googleBtn.addEventListener('click', async () => {

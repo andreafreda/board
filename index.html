@@ -333,6 +333,26 @@ html.pending-view .pan-ind { visibility: hidden !important; }
 .status-badge.offline{color:var(--danger);
   border-color:color-mix(in srgb,var(--danger) 35%,var(--border));}
 
+/* GDPR-style consent banner — shown once on first visit */
+.consent-banner{position:fixed;left:10px;right:10px;bottom:10px;z-index:90;
+  display:none;align-items:center;gap:.8rem;
+  padding:.7rem .9rem;border-radius:14px;
+  background:var(--surface);border:1px solid var(--border);
+  box-shadow:var(--shadow);backdrop-filter:blur(12px);
+  font-size:.78rem;line-height:1.4;
+  animation:consentIn .25s ease;}
+.consent-banner.on{display:flex;}
+.consent-text{flex:1;min-width:0;}
+.consent-text a{color:var(--primary);}
+.consent-accept{background:var(--primary);color:#fff;font-weight:600;font-size:.78rem;
+  padding:.45rem .9rem;border-radius:9px;border:none;cursor:pointer;flex-shrink:0;}
+.consent-accept:hover{filter:brightness(1.07);}
+@keyframes consentIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media (max-width: 540px){
+  .consent-banner{flex-direction:column;align-items:stretch;gap:.5rem;}
+  .consent-accept{align-self:flex-end;}
+}
+
 /* Cooperative viewer (logged-in member with role='viewer') — read-only.
    Drawer / pan / mode toolbars stay accessible but every editing affordance
    is greyed-out and pointer-events:none so nothing can be modified. */
@@ -384,7 +404,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.1.6.7</div>
+<div class="version">v.1.7.0</div>
 <div class="status-badge" id="statusBadge"></div>
 
 <div class="corner">
@@ -449,6 +469,22 @@ if (new URLSearchParams(location.search).get('board')) {
       <label class="dbtn" title="Import board" style="flex:1;font-size:1.15rem;display:grid;place-items:center;cursor:pointer;">📥
         <input type="file" id="importFile" accept=".json" style="display:none;"/>
       </label>
+    </div>
+  </div>
+
+  <!-- ── Privacy / GDPR ── (visible to logged-in users only) -->
+  <div class="d-sec d-gdpr" id="gdprSection" style="display:none;">
+    <div style="display:flex;gap:6px;align-items:center;justify-content:space-between;
+                font-size:.7rem;color:var(--muted);margin-bottom:.3rem;">
+      <span style="text-transform:uppercase;font-weight:700;letter-spacing:.05em;">Privacy</span>
+      <a href="./privacy.html" target="_blank" rel="noopener"
+         style="color:var(--primary);text-decoration:underline;">Policy</a>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="dbtn" id="exportAllBtn" type="button" title="Esporta tutti i miei dati"
+              style="flex:1;font-size:.78rem;">📦 Esporta tutto</button>
+      <button class="dbtn danger" id="deleteAccountBtn" type="button" title="Elimina account"
+              style="flex:1;font-size:.78rem;">⚠️ Elimina account</button>
     </div>
   </div>
 

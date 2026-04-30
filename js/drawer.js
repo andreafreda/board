@@ -33,6 +33,9 @@ let _authHooks = {
   sbAddMember:         async () => {},
   sbUpdateMemberRole:  async () => {},
   sbRemoveMember:      async () => {},
+  // GDPR
+  sbExportAllMyData:   async () => null,
+  sbDeleteAllMyData:   async () => {},
 };
 export function setAuthHooks(h) { _authHooks = { ..._authHooks, ...h }; }
 
@@ -96,6 +99,7 @@ export function renderBoardList() {
 
   const isUser = !!_authHooks.getCurrentUser();
   if (dom.newBoardBtn) dom.newBoardBtn.style.display = isUser ? 'grid' : 'none';
+  if (dom.gdprSection) dom.gdprSection.style.display = isUser ? '' : 'none';
 
   listEl.innerHTML = '';
 
@@ -526,6 +530,67 @@ function initActionButtons() {
   });
 }
 
+// ── Privacy / GDPR buttons ──────────────────────────────────────────
+function initGdprButtons() {
+  dom.exportAllBtn?.addEventListener('click', async () => {
+    dom.exportAllBtn.disabled = true;
+    const orig = dom.exportAllBtn.textContent;
+    dom.exportAllBtn.textContent = '… esporto …';
+    try {
+      const data = await _authHooks.sbExportAllMyData();
+      if (!data) { alert('Nessun dato da esportare.'); return; }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
+      a.href = url;
+      a.download = `board-export-${ts}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      openDrawer(false);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Errore durante l\'esportazione: ' + (err?.message || err));
+    } finally {
+      dom.exportAllBtn.disabled = false;
+      dom.exportAllBtn.textContent = orig;
+    }
+  });
+
+  dom.deleteAccountBtn?.addEventListener('click', async () => {
+    const confirm1 = window.confirm(
+      'Eliminerai TUTTE le tue board, note, disegni e iscrizioni a board cooperative.\n' +
+      'Questa azione è irreversibile.\n\n' +
+      'Vuoi continuare?'
+    );
+    if (!confirm1) return;
+    const typed = window.prompt(
+      'Per conferma definitiva, digita ELIMINA (in maiuscolo) e premi OK:'
+    );
+    if (typed !== 'ELIMINA') {
+      alert('Conferma annullata. Niente è stato cancellato.');
+      return;
+    }
+    dom.deleteAccountBtn.disabled = true;
+    dom.deleteAccountBtn.textContent = '… elimino …';
+    try {
+      await _authHooks.sbDeleteAllMyData();
+      // The onAuthStateChange SIGNED_OUT handler will reset the UI
+      // back to guest state automatically.
+      try { localStorage.removeItem('board-lite-v10'); } catch {}
+      try { localStorage.removeItem('board-lite-v10-prefs'); } catch {}
+      alert('Account e dati eliminati. A presto.');
+      // Reload to ensure a clean slate
+      setTimeout(() => location.reload(), 300);
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('Errore durante l\'eliminazione: ' + (err?.message || err));
+      dom.deleteAccountBtn.disabled = false;
+      dom.deleteAccountBtn.textContent = '⚠️ Elimina account';
+    }
+  });
+}
+
 // ════════════════════════════════════════════════════════════════════
 //   One-shot init
 // ════════════════════════════════════════════════════════════════════
@@ -533,4 +598,5 @@ export function initDrawerActions() {
   initConfirmPopup();
   initSizeButtons();
   initActionButtons();
+  initGdprButtons();
 }

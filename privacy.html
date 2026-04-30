@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Privacy Policy · Board</title>
+<style>
+:root{
+  --bg:#f6f4ee;--surface:#ffffff;--text:#1f2328;--muted:#70757d;
+  --border:rgba(31,35,40,.12);--primary:#0f6f76;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55;}
+.wrap{max-width:760px;margin:0 auto;padding:2.5rem 1.5rem 4rem;}
+header{padding-bottom:1.2rem;border-bottom:1px solid var(--border);margin-bottom:1.6rem;}
+h1{font-size:1.7rem;margin:0 0 .35rem;}
+h2{font-size:1.15rem;margin-top:2rem;color:var(--primary);}
+h3{font-size:.95rem;margin-top:1.25rem;color:var(--text);}
+p,li{font-size:.92rem;}
+ul{padding-left:1.4rem;}
+a{color:var(--primary);}
+.lang-switch{display:flex;gap:.4rem;margin-top:.6rem;}
+.lang-switch a{font-size:.78rem;padding:.25rem .7rem;border:1px solid var(--border);
+  border-radius:999px;text-decoration:none;background:var(--surface);}
+.back{display:inline-block;margin-top:2rem;font-size:.85rem;}
+.muted{color:var(--muted);font-size:.78rem;}
+hr{border:0;border-top:1px solid var(--border);margin:3rem 0;}
+section[hidden]{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Privacy Policy</h1>
+  <p class="muted">Ultimo aggiornamento / Last updated: 2026-04-30</p>
+  <div class="lang-switch">
+    <a href="#it" onclick="showLang('it')">🇮🇹 Italiano</a>
+    <a href="#en" onclick="showLang('en')">🇬🇧 English</a>
+  </div>
+</header>
+
+<!-- ── ITALIANO ─────────────────────────────────────────────────────── -->
+<section id="it">
+
+<h2>1. Chi siamo</h2>
+<p>
+  <strong>Board</strong> (di seguito "il Servizio") è un'applicazione web
+  open-source per la creazione di lavagne digitali con post-it e disegni,
+  con possibilità di condivisione e collaborazione cooperativa.
+</p>
+<p>
+  Il titolare del trattamento è l'autore del progetto, contattabile
+  all'indirizzo email indicato nel repository GitHub del progetto.
+</p>
+
+<h2>2. Quali dati raccogliamo</h2>
+<h3>2.1 Dati di account (solo se ti registri)</h3>
+<ul>
+  <li><strong>Email</strong> e <strong>nome</strong> forniti dal tuo account Google al login (OAuth);</li>
+  <li><strong>URL dell'avatar</strong> Google (immagine pubblica);</li>
+  <li><strong>Identificativo univoco</strong> generato da Supabase per la tua sessione.</li>
+</ul>
+
+<h3>2.2 Contenuti che crei</h3>
+<ul>
+  <li>Le board, i post-it e i disegni che salvi nel cloud;</li>
+  <li>Le impostazioni di visibilità (privato / pubblico / cooperativa);</li>
+  <li>Per le board cooperative: la lista delle email dei membri che inviti.</li>
+</ul>
+
+<h3>2.3 Dati tecnici</h3>
+<ul>
+  <li><strong>localStorage del browser</strong>: salviamo la tua ultima board attiva e le tue preferenze (colori, modalità) localmente sul tuo dispositivo;</li>
+  <li><strong>Token di sessione Supabase</strong>: necessari per mantenerti connesso, conservati nel localStorage del browser;</li>
+  <li>Non usiamo cookie di tracciamento, non usiamo Google Analytics, non c'è alcun strumento di profilazione.</li>
+</ul>
+
+<h2>3. Dove conserviamo i dati</h2>
+<p>
+  I tuoi dati sono conservati nei server di <strong>Supabase</strong>
+  (regione <code>eu-west-1</code>, Irlanda) — quindi all'interno dell'Unione Europea
+  e soggetti al GDPR.
+</p>
+<p>
+  L'autenticazione passa attraverso <strong>Google OAuth</strong>: Google riceve
+  la richiesta di login e ci comunica solo l'email e il nome che approvi.
+</p>
+<p>
+  L'avatar Google viene caricato direttamente dai server Google
+  (<code>lh3.googleusercontent.com</code>) ogni volta che apri la pagina:
+  questo significa che Google riceve l'informazione che hai aperto l'app.
+</p>
+
+<h2>4. Per quanto tempo</h2>
+<p>
+  I dati restano finché:
+</p>
+<ul>
+  <li>Non li cancelli tu manualmente (singole board o intero account);</li>
+  <li>Non scade il token di sessione (max ~1 settimana di inattività);</li>
+  <li>Il Servizio non viene chiuso (verrai avvisato via email se possibile).</li>
+</ul>
+
+<h2>5. I tuoi diritti (GDPR)</h2>
+<p>Hai diritto di:</p>
+<ul>
+  <li><strong>Accedere</strong> ai dati che abbiamo su di te → bottone "Esporta tutto" nel menu;</li>
+  <li><strong>Rettificare</strong> i dati → modifica direttamente le tue board;</li>
+  <li><strong>Cancellare</strong> tutto → bottone "Elimina account" nel menu;</li>
+  <li><strong>Portabilità</strong> → l'export è in formato JSON standard, riutilizzabile;</li>
+  <li><strong>Opporti al trattamento</strong> → non utilizzare il Servizio o eliminare l'account.</li>
+</ul>
+
+<h2>6. Condivisione con terzi</h2>
+<p>Non vendiamo né condividiamo i tuoi dati con terzi. I soli soggetti coinvolti sono:</p>
+<ul>
+  <li><strong>Supabase</strong> (database + autenticazione) — <a href="https://supabase.com/privacy" target="_blank" rel="noopener">privacy policy</a>;</li>
+  <li><strong>Google</strong> (login OAuth + caricamento avatar) — <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>;</li>
+  <li><strong>GitHub Pages</strong> (hosting statico dell'app) — <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">privacy policy</a>.</li>
+</ul>
+
+<h2>7. Sicurezza</h2>
+<p>
+  L'accesso ai tuoi dati è protetto a livello di database tramite
+  <em>Row-Level Security</em> di PostgreSQL: anche se qualcuno ottenesse
+  le credenziali pubbliche dell'app, non potrebbe leggere o scrivere
+  dati di altri utenti.
+</p>
+<p>
+  Il traffico è cifrato con HTTPS/WSS. I token di sessione sono
+  conservati in localStorage (non in cookie) — se condividi il browser
+  con qualcun altro, ricordati di fare logout.
+</p>
+
+<h2>8. Modifiche a questa policy</h2>
+<p>
+  Pubblicheremo qui ogni modifica con la data dell'ultimo aggiornamento.
+  Modifiche sostanziali ti verranno notificate al prossimo login.
+</p>
+
+<a class="back" href="./">← Torna all'app</a>
+
+</section>
+
+<hr/>
+
+<!-- ── ENGLISH ──────────────────────────────────────────────────────── -->
+<section id="en" hidden>
+
+<h2>1. Who we are</h2>
+<p>
+  <strong>Board</strong> (the "Service") is an open-source web app for
+  creating digital whiteboards with sticky notes and freehand drawings,
+  with sharing and cooperative editing.
+</p>
+<p>
+  The data controller is the project author, reachable through the
+  email address listed in the project's GitHub repository.
+</p>
+
+<h2>2. What we collect</h2>
+<h3>2.1 Account data (only if you sign in)</h3>
+<ul>
+  <li><strong>Email</strong> and <strong>name</strong> provided by your Google account at OAuth login;</li>
+  <li><strong>Google avatar URL</strong> (public image);</li>
+  <li><strong>Unique session identifier</strong> generated by Supabase.</li>
+</ul>
+
+<h3>2.2 Content you create</h3>
+<ul>
+  <li>Boards, sticky notes and drawings you save to the cloud;</li>
+  <li>Visibility settings (private / public / cooperative);</li>
+  <li>For cooperative boards: the list of email addresses of members you invite.</li>
+</ul>
+
+<h3>2.3 Technical data</h3>
+<ul>
+  <li><strong>Browser localStorage</strong>: your last active board and preferences (colours, modes) are stored locally on your device;</li>
+  <li><strong>Supabase session tokens</strong>: required to keep you signed in, stored in browser localStorage;</li>
+  <li>We do NOT use tracking cookies, Google Analytics, or any profiling tool.</li>
+</ul>
+
+<h2>3. Where data is stored</h2>
+<p>
+  Your data is stored on <strong>Supabase</strong> servers (region
+  <code>eu-west-1</code>, Ireland) — within the European Union and
+  subject to GDPR.
+</p>
+<p>
+  Authentication goes through <strong>Google OAuth</strong>: Google
+  receives the login request and forwards only the email and name you
+  approve.
+</p>
+<p>
+  The Google avatar is loaded directly from Google servers
+  (<code>lh3.googleusercontent.com</code>) every time you open the page,
+  which means Google can see that you opened the app.
+</p>
+
+<h2>4. Retention</h2>
+<p>Data is kept until:</p>
+<ul>
+  <li>You delete it manually (individual boards or the whole account);</li>
+  <li>Your session token expires (max ~1 week of inactivity);</li>
+  <li>The Service is shut down (we'll notify you by email if possible).</li>
+</ul>
+
+<h2>5. Your rights (GDPR)</h2>
+<p>You have the right to:</p>
+<ul>
+  <li><strong>Access</strong> the data we hold about you → "Export everything" button in the menu;</li>
+  <li><strong>Rectify</strong> data → edit your boards directly;</li>
+  <li><strong>Erase</strong> everything → "Delete account" button in the menu;</li>
+  <li><strong>Portability</strong> → the export is plain JSON, reusable elsewhere;</li>
+  <li><strong>Object</strong> → simply stop using the Service or delete the account.</li>
+</ul>
+
+<h2>6. Third parties</h2>
+<p>We don't sell or share your data with third parties. The only parties involved are:</p>
+<ul>
+  <li><strong>Supabase</strong> (database + auth) — <a href="https://supabase.com/privacy" target="_blank" rel="noopener">privacy policy</a>;</li>
+  <li><strong>Google</strong> (OAuth login + avatar) — <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>;</li>
+  <li><strong>GitHub Pages</strong> (static hosting) — <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">privacy policy</a>.</li>
+</ul>
+
+<h2>7. Security</h2>
+<p>
+  Access to your data is enforced at the database level via PostgreSQL
+  <em>Row-Level Security</em>: even if someone obtained the app's
+  public credentials, they could not read or write other users' data.
+</p>
+<p>
+  All traffic is encrypted with HTTPS/WSS. Session tokens live in
+  localStorage (not cookies) — if you share the browser, remember to
+  sign out.
+</p>
+
+<h2>8. Changes to this policy</h2>
+<p>
+  Any changes will be posted here with the updated date. Substantial
+  changes will be notified at your next sign-in.
+</p>
+
+<a class="back" href="./">← Back to the app</a>
+
+</section>
+
+<script>
+function showLang(lang){
+  document.getElementById('it').hidden = lang !== 'it';
+  document.getElementById('en').hidden = lang !== 'en';
+}
+// Switch on hash if present
+if (location.hash === '#en') showLang('en');
+window.addEventListener('hashchange', () => showLang(location.hash === '#en' ? 'en' : 'it'));
+</script>
+
+</div>
+</body>
+</html>

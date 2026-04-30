@@ -229,6 +229,74 @@ export async function sbRemoveMember(client, boardId, email) {
   return client.from('board_members').delete().eq('board_id', boardId).eq('email', email);
 }
 
+// ── GDPR: portability + right-to-erasure ────────────────────────────
+//
+// sbExportAllMyData: collects everything the app holds about the user
+// into a single JSON blob — owned boards (with their notes, strokes,
+// members) and the user's own membership records on cooperative boards
+// owned by others. Read-only contents of those membership boards are
+// NOT included (they belong to the other owner).
+export async function sbExportAllMyData(client, userId, email) {
+  if (!userId) return null;
+
+  const { data: boards } = await client
+    .from('boards').select('*').eq('owner_id', userId).order('created_at');
+
+  const ownedBoards = await Promise.all((boards || []).map(async (b) => {
+    const [{ data: notes }, { data: strokes }, { data: members }] = await Promise.all([
+      client.from('notes').select('*').eq('board_id', b.id),
+      client.from('strokes').select('*').eq('board_id', b.id),
+      client.from('board_members').select('*').eq('board_id', b.id),
+    ]);
+    return {
+      board:   b,
+      notes:   notes   || [],
+      strokes: strokes || [],
+      members: members || [],
+    };
+  }));
+
+  let memberships = [];
+  if (email) {
+    const { data } = await client
+      .from('board_members').select('*').eq('email', email);
+    memberships = data || [];
+  }
+
+  return {
+    exportedAt: new Date().toISOString(),
+    user: { id: userId, email: email || null },
+    ownedBoards,
+    memberships,
+    note: 'Esportazione GDPR. Le board condivise con te (ma di proprietà altrui) sono solo riferite tramite la lista memberships — il loro contenuto appartiene al rispettivo owner.',
+  };
+}
+
+// sbDeleteAllMyData: erases every record the user owns, removes them
+// from any cooperative-member rows, then signs them out. ON DELETE
+// CASCADE on the boards table takes care of notes/strokes/members
+// belonging to those boards.
+//
+// Note: this does NOT delete the auth.users row itself — that requires
+// service-role privileges and isn't safely callable from the client.
+// The Google account record stays in Supabase auth, but with no data
+// linked. Re-signing in produces a fresh empty account.
+export async function sbDeleteAllMyData(client, userId, email) {
+  if (!userId) return;
+  // Owned boards (CASCADE drops notes/strokes/members of those boards)
+  await client.from('boards').delete().eq('owner_id', userId);
+  // Detach from any cooperative boards we were a member of
+  if (email) {
+    await client.from('board_members').delete().eq('email', email);
+  }
+  // Defensive: any leftover notes/strokes that referenced a different
+  // owner_id but should still be ours
+  await client.from('notes').delete().eq('owner_id', userId);
+  await client.from('strokes').delete().eq('owner_id', userId);
+  // Final: end the session
+  await client.auth.signOut();
+}
+
 // ── Public board fetch (for ?board=<uuid> view mode) ────────────────
 export async function sbLoadPublicBoard(client, boardId) {
   const { data: meta, error } = await client
