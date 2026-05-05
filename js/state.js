@@ -14,12 +14,13 @@ export const STORAGE_KEY = 'board-lite-v10';
 export const PREFS_KEY   = 'board-lite-v10-prefs';
 
 export const NOTE_COLORS = ['yellow','pink','blue','green','lilac','orange','mint'];
+// Pastel warm palette — Board Redesign v2.0 (cream / rose / sky / sage / lavender / sand / mint)
 export const NOTE_COLOR_MAP = {
-  yellow:'#f5e36d', pink:'#f6bfd0', blue:'#bfe0f6', green:'#cbe8be',
-  lilac:'#dcccf7', orange:'#ffd3a1', mint:'#bfeedc',
+  yellow:'#faf0d4', pink:'#f5d4d4', blue:'#d4e4f7', green:'#d4ecd4',
+  lilac:'#ead4f5', orange:'#f5e6cc', mint:'#d4ece4',
 };
-export const PEN_COLORS  = ['#1f2328','#0f6f76','#d94848','#2563eb','#16a34a','#9333ea','#ea580c','#ffffff'];
-export const TEXT_COLORS = ['#1f2328','#d94848','#0f6f76','#2563eb','#16a34a','#9333ea','#7c3f00'];
+export const PEN_COLORS  = ['#1A1714','#1A6B5A','#c0392b','#2a6496','#27ae60','#8e44ad','#ea580c','#ffffff'];
+export const TEXT_COLORS = ['#1A1714','#c0392b','#1A6B5A','#2a6496','#27ae60','#8e44ad','#7c3f00'];
 
 export const PRESETS = [
   { label:'🖥️', title:'Desktop 1920×1080', w:1920, h:1080 },
