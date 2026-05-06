@@ -244,49 +244,40 @@ export function initAuth() {
   });
 
   dom.googleBtn.addEventListener('click', async () => {
+    // v2.0.13: switch to a full-page redirect for OAuth.
+    // The previous popup flow broke under several conditions:
+    //   - Chrome's Cross-Origin-Opener-Policy fragmented popup<->opener
+    //     comms, so onAuthStateChange sometimes never fired.
+    //   - Mobile browsers either silently blocked window.open or opened
+    //     a tab the user couldn't return from.
+    //   - The two awaits before window.open() consumed the user-gesture
+    //     budget on stricter browsers, blocking the popup.
+    // signInWithOAuth without skipBrowserRedirect performs a top-level
+    // navigation to Google, then back to our redirect URL with the
+    // session in the URL fragment — supabase-js detects it on the next
+    // page load and we end up signed in.
     dom.googleBtn.disabled = true;
     dom.googleBtn.innerHTML = '<span class="auth-spinner"></span>';
     try {
       const client     = await getClient();
       const redirectTo = window.location.href.split('?')[0].split('#')[0];
-      const { data, error } = await client.auth.signInWithOAuth({
+      const { error } = await client.auth.signInWithOAuth({
         provider: 'google',
-        options:  { redirectTo, skipBrowserRedirect: true },
+        options:  { redirectTo },
       });
-      if (error || !data?.url) throw error ?? new Error('OAuth error');
-
-      const popup = window.open(
-        data.url, 'sb-oauth',
-        'width=520,height=640,popup=yes,left=' +
-          Math.round(window.screenX + (window.outerWidth  - 520) / 2) +
-          ',top=' + Math.round(window.screenY + (window.outerHeight - 640) / 2),
-      );
-      if (!popup) { window.location.href = data.url; return; }
-
-      // Don't poll popup.closed — Chrome's Cross-Origin-Opener-Policy
-      // logs a warning every read. The onAuthStateChange listener in
-      // main.js fires SIGNED_IN once OAuth completes and renderAuthChrome
-      // re-renders into the user-card; the guest button gets hidden.
-      // If the user closes the popup WITHOUT signing in, we re-enable
-      // the button via a one-shot focus handler (when our window
-      // regains focus the popup is gone) plus a 90s safety fallback.
-      const restoreButton = () => {
-        if (currentUser) return; // already signed in — chrome was swapped
-        dom.googleBtn.disabled  = false;
-        dom.googleBtn.innerHTML = GOOGLE_SVG;
-      };
-      const onFocus = () => {
-        // Give onAuthStateChange a moment to land first
-        setTimeout(restoreButton, 800);
-        window.removeEventListener('focus', onFocus);
-      };
-      window.addEventListener('focus', onFocus);
+      if (error) throw error;
+      // If we reach this line, supabase didn't navigate (very rare).
+      // Restore the button so the user can retry.
       setTimeout(() => {
-        window.removeEventListener('focus', onFocus);
-        restoreButton();
-      }, 90_000);
-    } catch {
-      await renderAuth(null);
+        if (!currentUser) {
+          dom.googleBtn.disabled  = false;
+          dom.googleBtn.innerHTML = GOOGLE_SVG;
+        }
+      }, 4000);
+    } catch (e) {
+      console.warn('OAuth error:', e);
+      dom.googleBtn.disabled  = false;
+      dom.googleBtn.innerHTML = GOOGLE_SVG;
     }
   });
 
