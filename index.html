@@ -139,10 +139,11 @@ body.has-clock .board-pill{top:74px;}
 /* Corner — single avatar / user-menu button at the top-right.
    The drawer opens from this button and slides in from the right. */
 .corner{position:fixed;top:14px;right:14px;z-index:40;display:flex;}
-.cbtn#hamburger{width:36px;height:36px;border-radius:10px;border:none;
-  background:var(--primary);color:#fff;font-weight:700;font-size:.95rem;
+.cbtn#hamburger{width:32px;height:32px;border-radius:8px;border:none;
+  background:var(--primary);color:#fff;font-weight:700;font-size:.82rem;
   display:grid;place-items:center;
-  box-shadow:var(--ssoft);transition:filter .15s,transform .12s;}
+  box-shadow:var(--ssoft);transition:filter .15s,transform .12s;
+  font-family:inherit;}
 .cbtn#hamburger:hover{filter:brightness(1.07);}
 .cbtn#hamburger:active{transform:scale(.96);}
 /* When signed in: avatar image / initial replaces the ☰ glyph */
@@ -338,8 +339,9 @@ body.has-clock .board-pill{top:74px;}
   padding:1.1rem .75rem .6rem;display:flex;flex-direction:column;
   min-width:120px;min-height:100px;
   transition:box-shadow .15s,border-color .15s;}
-.note::before{content:'';position:absolute;top:10px;left:50%;transform:translateX(-50%);
-  width:28px;height:3px;border-radius:2px;background:rgba(26,23,20,.18);opacity:.5;}
+/* Drag-indicator bar: top-left short stripe, like the prototype */
+.note::before{content:'';position:absolute;top:10px;left:12px;
+  width:28px;height:3px;border-radius:2px;background:rgba(26,23,20,.22);opacity:.6;}
 .note:hover{box-shadow:0 4px 16px rgba(26,23,20,.10);}
 .note.text-active{box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 40%,transparent),0 8px 24px rgba(26,23,20,.12);
   border-color:color-mix(in srgb,var(--primary) 40%,transparent);}
@@ -347,11 +349,18 @@ body.has-clock .board-pill{top:74px;}
   display:flex;align-items:center;justify-content:flex-end;
   padding:5px 7px 0 0;gap:5px;cursor:grab;}
 .note.dragging .note-head{cursor:grabbing;}
-.mini-btn{width:22px;height:22px;border-radius:50%;
-  background:rgba(26,23,20,.08);
-  display:grid;place-items:center;color:rgba(26,23,20,.6);font-size:.8rem;
-  transition:background .12s,color .12s;border:none;}
-.mini-btn:hover{background:rgba(26,23,20,.16);color:rgba(26,23,20,.9);}
+/* Note action buttons (× / +) — invisible until the note is hovered / focused
+   so the post-it stays clean while idle, like in the prototype. */
+.mini-btn{width:20px;height:20px;border-radius:50%;
+  background:rgba(26,23,20,.10);
+  display:grid;place-items:center;color:rgba(26,23,20,.55);font-size:.72rem;
+  transition:opacity .15s,background .12s,color .12s;border:none;
+  opacity:0;pointer-events:none;}
+.note:hover .mini-btn,.note.text-active .mini-btn{opacity:1;pointer-events:auto;}
+.mini-btn:hover{background:rgba(26,23,20,.18);color:rgba(26,23,20,.9);}
+/* Resize handle: same idle/active treatment */
+.note .resize-handle{opacity:0;transition:opacity .15s;}
+.note:hover .resize-handle,.note.text-active .resize-handle{opacity:.55;}
 .note textarea{width:100%;flex:1;border:0;outline:0;background:transparent;
   resize:none;padding-top:.3rem;line-height:1.4;pointer-events:none;}
 .note textarea.editable{pointer-events:auto;}
@@ -503,7 +512,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.2</div>
+<div class="version">v.2.0.3</div>
 <div class="status-badge" id="statusBadge"></div>
 
 <!-- Board name pill (trigger for drawer, mirrors document.title) -->

@@ -136,6 +136,18 @@ function makeNote(note) {
     activateNote(note, el);
   });
 
+  // v2.0: double-click anywhere on the note body → enter text-edit
+  // immediately, regardless of which mode is active. Mirrors the prototype's
+  // onDoubleClick behaviour and gives users a fast way to write.
+  el.addEventListener('dblclick', (e) => {
+    if (
+      e.target.closest('[data-action]') ||
+      e.target.closest('[data-resize]') ||
+      e.target.closest('.note-canvas')
+    ) return;
+    activateNote(note, el);
+  });
+
   // Delete / Duplicate buttons
   el.querySelector('[data-action="del"]').addEventListener('click', (e) => {
     e.stopPropagation();
