@@ -136,27 +136,40 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 /* When the clock is visible, push the pill below it */
 body.has-clock .board-pill{top:74px;}
 
-/* Corner — top-right grouped pill: T / pen / note / hamburger.
-   Looks like a single floating capsule with subtle separators. */
-.corner{position:fixed;top:14px;right:14px;z-index:40;display:flex;gap:2px;
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:14px;padding:4px;box-shadow:var(--ssoft);
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
-.cbtn{width:36px;height:36px;border-radius:10px;border:none;
-  background:transparent;color:var(--muted);
-  display:grid;place-items:center;font-size:.95rem;font-weight:600;
-  transition:background .15s,color .15s;}
-.cbtn:hover{background:color-mix(in srgb,var(--text) 5%,transparent);color:var(--text);}
-.cbtn.on{background:color-mix(in srgb,var(--primary) 12%,transparent);
-  color:var(--primary);}
-.cbtn#hamburger{background:var(--primary);color:#fff;font-weight:700;}
-.cbtn#hamburger:hover{filter:brightness(1.06);}
-/* When the user is signed in we drop the hamburger glyph and show their
-   avatar instead — the hamburger doubles as the "user menu" entry point. */
+/* Corner — single avatar / user-menu button at the top-right.
+   The drawer opens from this button and slides in from the right. */
+.corner{position:fixed;top:14px;right:14px;z-index:40;display:flex;}
+.cbtn#hamburger{width:36px;height:36px;border-radius:10px;border:none;
+  background:var(--primary);color:#fff;font-weight:700;font-size:.95rem;
+  display:grid;place-items:center;
+  box-shadow:var(--ssoft);transition:filter .15s,transform .12s;}
+.cbtn#hamburger:hover{filter:brightness(1.07);}
+.cbtn#hamburger:active{transform:scale(.96);}
+/* When signed in: avatar image / initial replaces the ☰ glyph */
 .cbtn#hamburger.avatar-mode{padding:0;overflow:hidden;border-radius:50%;
-  font-size:.78rem;width:34px;height:34px;align-self:center;
-  background:var(--primary);color:#fff;}
-.cbtn#hamburger.avatar-mode img{display:block;}
+  font-size:.82rem;}
+.cbtn#hamburger.avatar-mode img{display:block;width:100%;height:100%;
+  border-radius:50%;object-fit:cover;}
+
+/* Mode picker — always-visible floating pill, bottom-center.
+   Hosts the 3 mode buttons; the contextual toolbars float right above it. */
+.mode-picker{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  z-index:55;display:flex;align-items:center;gap:4px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:18px;padding:6px;height:52px;
+  box-shadow:0 8px 32px rgba(26,23,20,.10),0 2px 8px rgba(26,23,20,.06);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
+.mp-btn{width:40px;height:40px;border-radius:12px;border:none;
+  background:transparent;color:var(--muted);
+  display:grid;place-items:center;font-size:.98rem;font-weight:600;
+  cursor:pointer;transition:background .15s,color .15s;}
+.mp-btn:hover{background:color-mix(in srgb,var(--text) 5%,transparent);color:var(--text);}
+.mp-btn.on{background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text);}
+.mp-sep{width:1px;height:24px;background:var(--border);margin:0 2px;}
+@media (max-width:600px){
+  .mode-picker{bottom:16px;border-radius:22px;padding:8px;height:60px;}
+  .mp-btn{width:48px;height:48px;}
+}
 
 /* Drawer — full-height slide-in from the right (Board Redesign v2.0) */
 .drawer{position:fixed;top:0;right:0;height:100dvh;z-index:60;
@@ -198,7 +211,9 @@ body.has-clock .board-pill{top:74px;}
 .size-inputs span{font-size:.8rem;text-align:center;color:var(--muted);}
 
 /* Floating pill toolbars — bottom-center, glassmorphism */
-.toolbar{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+/* Contextual toolbars float just above the mode picker (which sits at
+   bottom 24, height 52 → top edge ≈ 76). Leave a small gap. */
+.toolbar{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
   z-index:50;display:none;align-items:center;gap:6px;
   background:var(--surface);border:1px solid var(--border);
   border-radius:18px;padding:6px 10px;
@@ -207,7 +222,7 @@ body.has-clock .board-pill{top:74px;}
   white-space:nowrap;height:52px;overflow:visible;
   max-width:calc(100vw - 32px);}
 @media (max-width:600px){
-  .toolbar{bottom:16px;border-radius:22px;padding:8px 10px;height:60px;}
+  .toolbar{bottom:90px;}
 }
 .toolbar.visible{display:flex;}
 .tb-sep{width:1px;height:24px;background:var(--border);margin:0 2px;align-self:center;}
@@ -283,7 +298,7 @@ body.has-clock .board-pill{top:74px;}
 .draw-layer.eraser-on{cursor:cell;}
 
 /* View mode banner */
-.view-banner{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:50;
+.view-banner{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:50;
   display:none;align-items:center;gap:10px;
   background:var(--surface);border:1px solid var(--border);border-radius:999px;
   padding:.4rem 1rem;box-shadow:var(--shadow);
@@ -445,9 +460,9 @@ body.coop-viewer .note-canvas,
 body.coop-viewer .note-head,
 body.coop-viewer .note textarea,
 body.coop-viewer .resize-handle { pointer-events:none !important; }
-body.coop-viewer .corner #drawModeBtn,
-body.coop-viewer .corner #textModeBtn,
-body.coop-viewer .corner #noteModeBtn,
+body.coop-viewer #drawModeBtn,
+body.coop-viewer #textModeBtn,
+body.coop-viewer #noteModeBtn,
 body.coop-viewer #addNoteBtn,
 body.coop-viewer #clearSketch,
 body.coop-viewer #resetBtn,
@@ -488,7 +503,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.1</div>
+<div class="version">v.2.0.2</div>
 <div class="status-badge" id="statusBadge"></div>
 
 <!-- Board name pill (trigger for drawer, mirrors document.title) -->
@@ -500,11 +515,20 @@ if (new URLSearchParams(location.search).get('board')) {
 <!-- Drawer backdrop (closes the drawer on click) -->
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 
+<!-- v2.0: top-right is just the avatar / user-menu trigger.
+     Mode buttons live in the bottom-center pill below. -->
 <div class="corner">
-  <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>
-  <button class="cbtn" id="drawModeBtn" title="Lavagna" type="button">✏️</button>
-  <button class="cbtn" id="noteModeBtn" title="Post-it" type="button">🗒️</button>
-  <button class="cbtn" id="hamburger" type="button">☰</button>
+  <button class="cbtn" id="hamburger" type="button" aria-label="Menu utente">☰</button>
+</div>
+
+<!-- v2.0: persistent mode picker — always-visible floating pill at the bottom.
+     Clicking a tool toggles its mode and reveals the contextual toolbar
+     (#noteToolbar / #drawToolbar / #textToolbar) above it. -->
+<div class="mode-picker" id="modePicker">
+  <button class="mp-btn" id="textModeBtn" title="Testo" type="button">T</button>
+  <button class="mp-btn" id="drawModeBtn" title="Lavagna" type="button">✏️</button>
+  <span class="mp-sep"></span>
+  <button class="mp-btn" id="noteModeBtn" title="Post-it" type="button">🗒️</button>
 </div>
 
 <div class="drawer" id="drawer">
