@@ -56,19 +56,71 @@ export function initDrawer() {
   // v2.0: drawer close button (X in the user-card header)
   if (dom.drawerCloseBtn) dom.drawerCloseBtn.addEventListener('click', () => openDrawer(false));
 
+  // v2.0: dimensioni-board popover — toggle from the toolbar button.
+  const bsBtn  = document.getElementById('boardSizeBtn');
+  const bsPop  = document.getElementById('boardSizePop');
+  const frameToggle = document.getElementById('boardFrameToggle');
+  const setBsOpen = (open) => {
+    if (!bsPop) return;
+    bsPop.hidden = !open;
+    bsBtn?.classList.toggle('on', open);
+    if (open) renderPresets();
+  };
+  if (bsBtn && bsPop) {
+    bsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setBsOpen(bsPop.hidden);
+    });
+    document.addEventListener('click', (e) => {
+      if (!bsPop.hidden && !bsPop.contains(e.target) && e.target !== bsBtn) setBsOpen(false);
+    });
+  }
+  // Frame visibility toggle — persisted on body class so CSS can react.
+  if (frameToggle) {
+    const FRAME_KEY = 'board-lite-frame-on';
+    const initial = localStorage.getItem(FRAME_KEY) !== '0';
+    document.body.classList.toggle('frame-on', initial);
+    frameToggle.classList.toggle('on', initial);
+    frameToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const on = !document.body.classList.contains('frame-on');
+      document.body.classList.toggle('frame-on', on);
+      frameToggle.classList.toggle('on', on);
+      localStorage.setItem(FRAME_KEY, on ? '1' : '0');
+    });
+  }
+
   // v2.0: top-right share button — copies the active board's share URL.
   const shareBtn = document.getElementById('shareBtn');
   if (shareBtn) {
     let resetTimer = null;
+    const flashOk = () => {
+      shareBtn.classList.add('copied');
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => shareBtn.classList.remove('copied'), 1600);
+    };
+    const fallback = (link) => {
+      // execCommand fallback for non-secure contexts; if all else fails, prompt
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = link; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) { flashOk(); return; }
+      } catch {}
+      prompt('Share link:', link);
+    };
     shareBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const link = `${location.origin}${location.pathname}?board=${state.activeBoardId || ''}`;
-      const ok = () => {
-        shareBtn.classList.add('copied');
-        clearTimeout(resetTimer);
-        resetTimer = setTimeout(() => shareBtn.classList.remove('copied'), 1600);
-      };
-      navigator.clipboard?.writeText(link).then(ok).catch(() => prompt('Share link:', link));
+      const id = state.activeBoardId;
+      if (!id) { alert('Apri prima una board da condividere.'); return; }
+      const link = `${location.origin}${location.pathname}?board=${id}`;
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(link).then(flashOk, () => fallback(link));
+      } else {
+        fallback(link);
+      }
     });
   }
 
@@ -468,17 +520,25 @@ function execDeleteBoard(boardId) {
 // ════════════════════════════════════════════════════════════════════
 //   Resolution presets + size inputs
 // ════════════════════════════════════════════════════════════════════
+// v2.0: device-card preset renderer for the dimensioni-board popover.
+const PRESET_ICONS = {
+  desktop: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="4" width="20" height="13" rx="1.2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+  laptop:  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M2 20h20"/></svg>',
+  tv:      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="5" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>',
+  tablet:  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>',
+  mobile:  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>',
+};
 export function renderPresets() {
   const row = dom.presetRow;
+  if (!row) return;
   row.innerHTML = '';
   PRESETS.forEach((p) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = p.label;
     b.title = p.title || p.label;
     const isActive = Number(state.boardW) === p.w && Number(state.boardH) === p.h;
-    b.className = 'preset-btn' + (isActive ? ' active' : '');
-    b.style.cssText = 'font-size:1.3rem;padding:.3rem .5rem;';
+    b.className = 'preset-card' + (isActive ? ' active' : '');
+    b.innerHTML = `${PRESET_ICONS[p.kind] || PRESET_ICONS.desktop}<span>${p.label}</span>`;
     b.addEventListener('click', () => {
       dom.boardW.value = p.w;
       dom.boardH.value = p.h;
@@ -488,8 +548,8 @@ export function renderPresets() {
     });
     row.appendChild(b);
   });
-  dom.boardW.value = state.boardW;
-  dom.boardH.value = state.boardH;
+  if (dom.boardW) dom.boardW.value = state.boardW;
+  if (dom.boardH) dom.boardH.value = state.boardH;
 }
 
 function initSizeButtons() {

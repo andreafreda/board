@@ -22,12 +22,14 @@ export const NOTE_COLOR_MAP = {
 export const PEN_COLORS  = ['#1A1714','#1A6B5A','#c0392b','#2a6496','#27ae60','#8e44ad','#ea580c','#ffffff'];
 export const TEXT_COLORS = ['#1A1714','#c0392b','#1A6B5A','#2a6496','#27ae60','#8e44ad','#7c3f00'];
 
+// v2.0: presets surface as device cards (icon + name) inside the
+// "Dimensioni board" popover. `kind` keys into the SVG icon set in drawer.js.
 export const PRESETS = [
-  { label:'🖥️', title:'Desktop 1920×1080', w:1920, h:1080 },
-  { label:'💻', title:'Laptop 1366×768',   w:1366, h:768  },
-  { label:'📺', title:'Full HD 1280×720',  w:1280, h:720  },
-  { label:'📟', title:'Tablet 768×1024',   w:768,  h:1024 },
-  { label:'📱', title:'Mobile 390×844',    w:390,  h:844  },
+  { label:'Desktop', kind:'desktop', title:'Desktop 1920×1080', w:1920, h:1080 },
+  { label:'Laptop',  kind:'laptop',  title:'Laptop 1440×900',   w:1440, h:900  },
+  { label:'TV 4K',   kind:'tv',      title:'TV 4K 2560×1440',   w:2560, h:1440 },
+  { label:'Tablet',  kind:'tablet',  title:'Tablet 1024×768',   w:1024, h:768  },
+  { label:'Mobile',  kind:'mobile',  title:'Mobile 390×844',    w:390,  h:844  },
 ];
 
 export const PEN_MIN = 1,  PEN_MAX = 40;

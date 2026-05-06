@@ -40,6 +40,8 @@ export function applyBoardSize(w, h) {
   state.boardW = w; state.boardH = h;
   dom.board.style.width  = w + 'px';
   dom.board.style.height = h + 'px';
+  // Used by the dashed-frame label (body.frame-on #board::before)
+  dom.board.dataset.size = `${w} × ${h}`;
 
   const dpr = window.devicePixelRatio || 1;
   dom.sketch.width  = Math.round(w * dpr);
