@@ -21,6 +21,7 @@ import { renderNotes } from './notes.js';
 import {
   initModes, initFullscreen, initGlobalClickHandlers,
   initClock, initDrawSlider, initTxtSlider, setDrawerToggle,
+  initCalendarMode,
 } from './modes.js';
 import {
   initDrawer, initDrawerActions,
@@ -61,6 +62,7 @@ initPan();
 initModes();
 initFullscreen();
 initGlobalClickHandlers();
+initCalendarMode();
 initClock();
 initDrawSlider();
 initTxtSlider();

@@ -346,6 +346,34 @@ export function initModes() {
   syncDraw();
 }
 
+// ── Calendar mode (v3) — toggle the calendar view on/off ───────────
+export function initCalendarMode() {
+  const btn = dom.calendarModeBtn;
+  if (!btn) return;
+
+  // Lazy-load the calendar module on first toggle so guests / users who
+  // never open the calendar don't pay its render cost.
+  let _calMod = null;
+  const load = async () => {
+    if (_calMod) return _calMod;
+    _calMod = await import('./calendar.js');
+    _calMod.initCalendar();
+    // Hand the calendar a "leave" callback so its in-header back button can
+    // trigger a clean exit without a circular import on modes.js.
+    _calMod.setOnLeave(() => setOn(false));
+    return _calMod;
+  };
+
+  const setOn = async (on) => {
+    const mod = await load();
+    mod.setActive(on);
+    btn.classList.toggle('on', on);
+    if (on) exitAllModes();
+  };
+
+  btn.addEventListener('click', () => setOn(!btn.classList.contains('on')));
+}
+
 // ── Fullscreen FAB ──────────────────────────────────────────────────
 export function initFullscreen() {
   dom.fullBtn.addEventListener('click', async () => {

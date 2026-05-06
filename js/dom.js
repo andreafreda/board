@@ -102,6 +102,10 @@ export const dom = {
   boardPillName:    $('boardPillName'),
   drawerBackdrop:   $('drawerBackdrop'),
 
+  // Calendar view (v3)
+  calendarView:    $('calendarView'),
+  calendarModeBtn: $('calendarModeBtn'),
+
   // Confirm popup
   confirmPop:  $('confirmPop'),
   confirmMsg:  $('confirmMsg'),
