@@ -372,7 +372,14 @@ body.has-clock .board-pill{top:74px;}
   background:color-mix(in srgb,var(--border) 80%,transparent);
   border-radius:999px;position:relative;}
 .vslider-fill{position:absolute;bottom:0;left:0;right:0;border-radius:999px;background:var(--primary);}
-.vslider-thumb{position:absolute;left:50%;transform:translate(-50%,-50%);
+/* Thumb's *center* must sit at the value point on the track.
+   With JS setting `bottom: p%`, that anchors the thumb's bottom edge
+   to p% above the track's bottom. To put the center there instead,
+   shift the element down by half its own height (translateY(+50%)).
+   The earlier translateY(-50%) parked the center ~20 px above the
+   anchor, which is why the thumb looked stuck near the middle of the
+   track at value=min. */
+.vslider-thumb{position:absolute;left:50%;transform:translate(-50%,50%);
   width:20px;height:20px;border-radius:999px;
   background:var(--surface);border:2px solid var(--primary);
   box-shadow:0 2px 8px rgba(0,0,0,.18);}
@@ -643,7 +650,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.22</div>
+<div class="version">v.2.0.23</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
