@@ -202,6 +202,23 @@ export function initModes() {
   setOnNoteToolbar(renderTextToolbar);
   setOnTextToolbarHidden(() => dom.textToolbar.classList.remove('visible'));
 
+  // ── Cursor mode (v2.0): explicit "no mode" button — exits all modes
+  // and visually marks itself active when nothing else is on. ──
+  const cursorBtn = document.getElementById('cursorModeBtn');
+  if (cursorBtn) {
+    const syncCursor = () => {
+      const idle = !state.drawMode && !state.textMode && !state.noteMode;
+      cursorBtn.classList.toggle('on', idle);
+    };
+    cursorBtn.addEventListener('click', () => { exitAllModes(); save(); syncCursor(); });
+    // Re-sync the cursor highlight whenever any mode button is toggled.
+    ['drawModeBtn','textModeBtn','noteModeBtn'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.addEventListener('click', () => setTimeout(syncCursor, 0));
+    });
+    syncCursor();
+  }
+
   // ── Draw mode ──
   dom.drawModeBtn.addEventListener('click', () => {
     state.drawMode = !state.drawMode;

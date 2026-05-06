@@ -136,9 +136,16 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 /* When the clock is visible, push the pill below it */
 body.has-clock .board-pill{top:74px;}
 
-/* Corner — single avatar / user-menu button at the top-right.
-   The drawer opens from this button and slides in from the right. */
-.corner{position:fixed;top:14px;right:14px;z-index:40;display:flex;}
+/* Corner — share + avatar cluster at the top-right.
+   The drawer opens from the avatar; share copies the board URL. */
+.corner{position:fixed;top:14px;right:14px;z-index:40;display:flex;gap:8px;}
+.cbtn-share{width:32px;height:32px;border-radius:8px;border:none;
+  background:var(--primary);color:#fff;
+  display:grid;place-items:center;cursor:pointer;
+  box-shadow:var(--ssoft);transition:filter .15s,transform .12s;}
+.cbtn-share:hover{filter:brightness(1.07);}
+.cbtn-share:active{transform:scale(.96);}
+.cbtn-share.copied{background:#1A1714;}
 .cbtn#hamburger{width:32px;height:32px;border-radius:8px;border:none;
   background:var(--primary);color:#fff;font-weight:700;font-size:.82rem;
   display:grid;place-items:center;
@@ -163,7 +170,9 @@ body.has-clock .board-pill{top:74px;}
 .mp-btn{width:40px;height:40px;border-radius:12px;border:none;
   background:transparent;color:var(--muted);
   display:grid;place-items:center;font-size:.98rem;font-weight:600;
-  cursor:pointer;transition:background .15s,color .15s;}
+  cursor:pointer;transition:background .15s,color .15s;
+  font-family:inherit;padding:0;}
+.mp-btn svg{display:block;}
 .mp-btn:hover{background:color-mix(in srgb,var(--text) 5%,transparent);color:var(--text);}
 .mp-btn.on{background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text);}
 .mp-sep{width:1px;height:24px;background:var(--border);margin:0 2px;}
@@ -332,12 +341,14 @@ body.has-clock .board-pill{top:74px;}
   border-color:color-mix(in srgb,var(--primary) 30%,transparent);}
 .d-copy-btn.copied{color:var(--primary);border-color:color-mix(in srgb,var(--primary) 40%,transparent);}
 
-/* Note — minimal flat pastel rectangle, soft shadow, drag handle bar */
-.note{position:absolute;border-radius:var(--radius);
+/* Note — minimal flat pastel rectangle, soft shadow, drag handle bar.
+   v2.0: bigger radius (16) and forced rotation:0 to match the design. */
+.note{position:absolute;border-radius:16px;
   box-shadow:0 2px 12px rgba(26,23,20,.07);
   border:1.5px solid transparent;
-  padding:1.1rem .75rem .6rem;display:flex;flex-direction:column;
-  min-width:120px;min-height:100px;
+  padding:1.4rem .9rem .7rem;display:flex;flex-direction:column;
+  min-width:140px;min-height:120px;
+  transform:rotate(0deg);
   transition:box-shadow .15s,border-color .15s;}
 /* Drag-indicator bar: top-left short stripe, like the prototype */
 .note::before{content:'';position:absolute;top:10px;left:12px;
@@ -426,14 +437,19 @@ html.pending-view .pan-ind { visibility: hidden !important; }
   margin-top:14px;box-shadow:0 1px 3px rgba(0,0,0,.18);}
 
 /* Cloud sync status pill (only shown when logged in) */
-.status-badge{position:fixed;top:84px;left:14px;z-index:30;
-  display:none;align-items:center;gap:5px;
-  font-size:.65rem;font-weight:600;padding:.22rem .6rem;border-radius:999px;
+/* v2.0: tiny saved-status dot sitting just to the right of the board pill. */
+.status-badge{position:fixed;top:14px;left:calc(14px + 9rem);z-index:38;
+  display:none;align-items:center;justify-content:center;
+  width:32px;height:32px;border-radius:10px;
   background:var(--surface);border:1px solid var(--border);box-shadow:var(--ssoft);
-  user-select:none;pointer-events:none;white-space:nowrap;
+  user-select:none;pointer-events:none;
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  letter-spacing:.02em;}
+  font-size:0;}
 .status-badge.on{display:inline-flex;}
+.status-badge::before{content:'';display:block;width:8px;height:8px;
+  border-radius:50%;background:currentColor;
+  box-shadow:0 0 0 2px color-mix(in srgb,currentColor 22%,transparent);}
+body.has-clock .status-badge{top:74px;}
 .status-badge.saved  {color:#1A6B5A;}
 .status-badge.saving {color:#ea580c;}
 .status-badge.offline{color:var(--danger);
@@ -512,7 +528,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.3</div>
+<div class="version">v.2.0.4</div>
 <div class="status-badge" id="statusBadge"></div>
 
 <!-- Board name pill (trigger for drawer, mirrors document.title) -->
@@ -524,20 +540,35 @@ if (new URLSearchParams(location.search).get('board')) {
 <!-- Drawer backdrop (closes the drawer on click) -->
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 
-<!-- v2.0: top-right is just the avatar / user-menu trigger.
+<!-- v2.0: top-right cluster — share button + avatar / user-menu trigger.
      Mode buttons live in the bottom-center pill below. -->
 <div class="corner">
+  <button class="cbtn cbtn-share" id="shareBtn" type="button" title="Copia link board" aria-label="Condividi">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+  </button>
   <button class="cbtn" id="hamburger" type="button" aria-label="Menu utente">☰</button>
 </div>
 
 <!-- v2.0: persistent mode picker — always-visible floating pill at the bottom.
-     Clicking a tool toggles its mode and reveals the contextual toolbar
-     (#noteToolbar / #drawToolbar / #textToolbar) above it. -->
+     Layout mirrors the prototype: cursor / pen | note / text | fullscreen. -->
 <div class="mode-picker" id="modePicker">
-  <button class="mp-btn" id="textModeBtn" title="Testo" type="button">T</button>
-  <button class="mp-btn" id="drawModeBtn" title="Lavagna" type="button">✏️</button>
+  <button class="mp-btn" id="cursorModeBtn" title="Seleziona" type="button" aria-label="Seleziona">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/></svg>
+  </button>
+  <button class="mp-btn" id="drawModeBtn" title="Disegna" type="button">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+  </button>
   <span class="mp-sep"></span>
-  <button class="mp-btn" id="noteModeBtn" title="Post-it" type="button">🗒️</button>
+  <button class="mp-btn" id="noteModeBtn" title="Post-it" type="button">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h6"/></svg>
+  </button>
+  <button class="mp-btn" id="textModeBtn" title="Testo" type="button">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+  </button>
+  <span class="mp-sep"></span>
+  <button class="mp-btn" id="fullBtn" type="button" title="Schermo intero" aria-label="Fullscreen">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+  </button>
 </div>
 
 <div class="drawer" id="drawer">
@@ -656,7 +687,7 @@ if (new URLSearchParams(location.search).get('board')) {
   </div>
 </div>
 
-<button class="fab-fs" id="fullBtn" type="button">⛶</button>
+<!-- standalone fullscreen fab removed in v2.0.4 — moved into the mode picker -->
 <div class="pan-ind" id="panInd"></div>
 
 <!-- Peers (online users on cooperative board) -->

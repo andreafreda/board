@@ -53,6 +53,22 @@ export function initDrawer() {
   if (dom.boardPill) dom.boardPill.addEventListener('click', () => openDrawer());
   if (dom.drawerBackdrop) dom.drawerBackdrop.addEventListener('click', () => openDrawer(false));
 
+  // v2.0: top-right share button — copies the active board's share URL.
+  const shareBtn = document.getElementById('shareBtn');
+  if (shareBtn) {
+    let resetTimer = null;
+    shareBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const link = `${location.origin}${location.pathname}?board=${state.activeBoardId || ''}`;
+      const ok = () => {
+        shareBtn.classList.add('copied');
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => shareBtn.classList.remove('copied'), 1600);
+      };
+      navigator.clipboard?.writeText(link).then(ok).catch(() => prompt('Share link:', link));
+    });
+  }
+
   // Mirror document.title into the board-name pill so it always reflects
   // the active board without having to thread state through every caller.
   const titleEl = document.querySelector('title');
