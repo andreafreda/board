@@ -156,28 +156,31 @@ body.frame-on #board::before{
 .clock .tl{font-size:.8rem;font-weight:700;}
 .clock .dl{font-size:.66rem;opacity:.65;}
 .clock.hidden{display:none;}
-/* Version label tucked bottom-left out of the way of the new top chrome */
-.version{position:fixed;bottom:14px;left:14px;z-index:29;
-  font-size:.6rem;color:var(--muted);opacity:.4;font-weight:500;
-  letter-spacing:.05em;
+/* Version label — small monospaced tag at the bottom-right of the clock area
+   (top-left). Stays readable but doesn't compete with the chrome. */
+.version{position:fixed;top:60px;left:18px;z-index:36;
+  font-size:.62rem;color:var(--muted);opacity:.7;font-weight:600;
+  letter-spacing:.04em;font-variant-numeric:tabular-nums;
   user-select:none;pointer-events:none;padding:0 2px;}
+body:not(.has-clock) .version{top:18px;left:80px;}
 
-/* Board-name pill — top-left trigger that mirrors document.title (active board).
-   Tapping it opens the drawer (where the board list lives). */
+/* Board pill — fixed top-left. Sized to its content (no flex parent). */
 .board-pill{position:fixed;top:14px;left:14px;z-index:38;
   display:none;align-items:center;gap:6px;
   padding:.42rem .8rem;border-radius:12px;
   background:var(--surface);border:1px solid var(--border);box-shadow:var(--ssoft);
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   font-size:.82rem;font-weight:500;color:var(--text);
-  max-width:calc(100vw - 240px);overflow:hidden;
-  cursor:pointer;transition:background .15s;}
+  cursor:pointer;
+  /* Never shrink below something readable; only cap on wide screens. */
+  max-width:max(140px, calc(100vw - 240px));
+  transition:background .15s;font-family:inherit;}
+body.has-clock .board-pill{top:74px;}
 .board-pill.on{display:inline-flex;}
 .board-pill:hover{background:color-mix(in srgb,var(--text) 4%,var(--surface));}
-.board-pill .bp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.board-pill .bp-name{flex:0 1 auto;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .board-pill .bp-caret{flex-shrink:0;opacity:.55;font-size:.7rem;}
-/* When the clock is visible, push the pill below it */
-body.has-clock .board-pill{top:74px;}
 
 /* Corner — share + avatar cluster at the top-right.
    The drawer opens from the avatar; share copies the board URL. */
@@ -523,14 +526,15 @@ html.pending-view .pan-ind { visibility: hidden !important; }
   margin-top:14px;box-shadow:0 1px 3px rgba(0,0,0,.18);}
 
 /* Cloud sync status pill (only shown when logged in) */
-/* v2.0: tiny saved-status dot sitting just to the right of the board pill. */
-.status-badge{position:fixed;top:14px;left:calc(14px + 9rem);z-index:38;
+/* v2.0: tiny saved-status dot — placed by JS just to the right of the pill. */
+.status-badge{position:fixed;top:14px;left:14px;z-index:38;
   display:none;align-items:center;justify-content:center;
   width:32px;height:32px;border-radius:10px;
   background:var(--surface);border:1px solid var(--border);box-shadow:var(--ssoft);
   user-select:none;pointer-events:none;
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  font-size:0;}
+  font-size:0;
+  transition:left .12s;}
 .status-badge.on{display:inline-flex;}
 .status-badge::before{content:'';display:block;width:8px;height:8px;
   border-radius:50%;background:currentColor;
@@ -614,14 +618,15 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.6</div>
-<div class="status-badge" id="statusBadge"></div>
+<div class="version">v.2.0.7</div>
 
-<!-- Board name pill (trigger for drawer, mirrors document.title) -->
+<!-- Board pill: top-left, contains the saved-status dot inline as a child
+     so it always hugs the pill regardless of board-name length. -->
 <button class="board-pill" id="boardPill" type="button" title="Cambia board">
   <span class="bp-name" id="boardPillName">Board</span>
   <span class="bp-caret">▾</span>
 </button>
+<div class="status-badge" id="statusBadge"></div>
 
 <!-- Drawer backdrop (closes the drawer on click) -->
 <div class="drawer-backdrop" id="drawerBackdrop"></div>

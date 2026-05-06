@@ -17,6 +17,21 @@ let _savingCount  = 0;
 let _channelDown  = false;
 let _savedFlashTimer = null;
 
+// Position the status badge just to the right of the board pill.
+// Uses the pill's measured right-edge so it always hugs it, regardless
+// of how long the active board's name is.
+function placeBadgeNextToPill() {
+  const el   = dom.statusBadge;
+  const pill = document.getElementById('boardPill');
+  if (!el || !pill) return;
+  // Wait one frame for the pill's layout if it just appeared.
+  const r = pill.getBoundingClientRect();
+  if (r.width > 0) {
+    const left = Math.round(r.right + 6);
+    el.style.left = left + 'px';
+  }
+}
+
 function render() {
   const el = dom.statusBadge;
   if (!el) return;
@@ -38,12 +53,16 @@ function render() {
   }
   el.className = 'status-badge on ' + cls;
   el.textContent = text;
+  // Re-place after the pill has settled with the latest board name.
+  requestAnimationFrame(placeBadgeNextToPill);
 }
 
 export function statusInit() {
   if (typeof window === 'undefined') return;
   window.addEventListener('online',  () => { _online = true;  render(); });
   window.addEventListener('offline', () => { _online = false; render(); });
+  // Reposition badge on viewport resize (pill width may change).
+  window.addEventListener('resize', placeBadgeNextToPill);
   render();
 }
 
