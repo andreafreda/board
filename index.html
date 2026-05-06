@@ -377,7 +377,8 @@ body.has-clock .board-pill{top:74px;}
   background:var(--surface);border:2px solid var(--primary);
   box-shadow:0 2px 8px rgba(0,0,0,.18);}
 .vslider-preview{width:22px;height:22px;border-radius:999px;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  align-self:center;}
 
 /* Fullscreen — small floating square bottom-right */
 .fab-fs{position:fixed;bottom:14px;right:14px;z-index:41;
@@ -642,7 +643,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.18</div>
+<div class="version">v.2.0.19</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->

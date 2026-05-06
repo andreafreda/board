@@ -64,10 +64,14 @@ export function initDrawSlider() {
 
 function updateDrawPreview() {
   const sz = state.eraser ? state.eraserSize : state.penSize;
-  const d  = Math.min(sz, 28);
+  // v2.0.19: clamp to a [4..18] visible range and centre block-level.
+  // Below ~4 px the dot is just a sub-pixel smear that looks
+  // off-centre; above ~18 px it overflows the wrap. The actual stroke
+  // width is reflected by the value label, not by this swatch.
+  const d  = Math.max(4, Math.min(sz, 18));
   dom.drawSliderPreview.innerHTML =
-    `<div style="width:${d}px;height:${d}px;border-radius:999px;
-      background:${state.eraser ? 'var(--muted)' : state.penColor};opacity:.85;"></div>`;
+    `<span style="display:block;width:${d}px;height:${d}px;border-radius:999px;
+      margin:0 auto;background:${state.eraser ? 'var(--muted)' : state.penColor};opacity:.85;"></span>`;
 }
 
 export function initTxtSlider() {
