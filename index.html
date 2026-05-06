@@ -641,7 +641,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.20</div>
+<div class="version">v.2.0.21</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
@@ -827,11 +827,11 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tb-sep" id="drawSep2"></div>
   <div class="vslider-wrap" id="drawSliderWrap">
     <div class="vslider-val" id="drawSliderVal">7</div>
+    <div class="vslider-preview" id="drawSliderPreview"></div>
     <div class="vslider-track" id="drawSliderTrack">
       <div class="vslider-fill" id="drawSliderFill"></div>
       <div class="vslider-thumb" id="drawSliderThumb"></div>
     </div>
-    <div class="vslider-preview" id="drawSliderPreview"></div>
   </div>
 </div>
 
@@ -841,12 +841,12 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tb-sep"></div>
   <div class="vslider-wrap" id="txtSliderWrap">
     <div class="vslider-val" id="txtSliderVal">15</div>
+    <div class="vslider-preview" id="txtSliderPreview"
+      style="font-weight:700;color:var(--primary);font-size:14px;">A</div>
     <div class="vslider-track" id="txtSliderTrack">
       <div class="vslider-fill" id="txtSliderFill"></div>
       <div class="vslider-thumb" id="txtSliderThumb"></div>
     </div>
-    <div class="vslider-preview" id="txtSliderPreview"
-      style="font-weight:700;color:var(--primary);font-size:14px;">A</div>
   </div>
 </div>
 
