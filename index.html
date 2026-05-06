@@ -150,6 +150,12 @@ body.has-clock .board-pill{top:74px;}
   color:var(--primary);}
 .cbtn#hamburger{background:var(--primary);color:#fff;font-weight:700;}
 .cbtn#hamburger:hover{filter:brightness(1.06);}
+/* When the user is signed in we drop the hamburger glyph and show their
+   avatar instead — the hamburger doubles as the "user menu" entry point. */
+.cbtn#hamburger.avatar-mode{padding:0;overflow:hidden;border-radius:50%;
+  font-size:.78rem;width:34px;height:34px;align-self:center;
+  background:var(--primary);color:#fff;}
+.cbtn#hamburger.avatar-mode img{display:block;}
 
 /* Drawer — full-height slide-in from the right (Board Redesign v2.0) */
 .drawer{position:fixed;top:0;right:0;height:100dvh;z-index:60;
@@ -354,12 +360,18 @@ html.pending-view #notesLayer,
 html.pending-view .pan-ind { visibility: hidden !important; }
 
 /* Peers stack — top-center pill of avatars on cooperative boards */
-.peers-stack{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:38;
+/* v2.0: presence stack lives top-right, immediately left of the corner pill.
+   The corner is ~ 4×36 + 4px padding = ~ 152px wide → leave 168px clearance. */
+.peers-stack{position:fixed;top:14px;right:172px;z-index:38;
   display:none;align-items:center;gap:0;
   padding:4px 12px 4px 6px;background:var(--surface);border:1px solid var(--border);
-  border-radius:999px;box-shadow:var(--ssoft);
+  border-radius:999px;box-shadow:var(--ssoft);height:44px;
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  max-width:calc(100vw - 200px);}
+  max-width:calc(100vw - 220px);}
+@media (max-width:600px){
+  /* On mobile the corner shrinks; tuck the stack just below it. */
+  .peers-stack{right:14px;top:64px;}
+}
 .peers-stack.on{display:flex;}
 .peer-avatar{width:28px;height:28px;border-radius:50%;
   display:grid;place-items:center;font-size:.72rem;font-weight:700;color:#fff;

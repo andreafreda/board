@@ -72,6 +72,16 @@ function renderAuthChrome(session) {
       ? `<img src="${avatar}" alt="" style="width:100%;height:100%;border-radius:999px;object-fit:cover;">`
       : name.charAt(0).toUpperCase();
     if (dom.userName) dom.userName.textContent = name;
+
+    // v2.0: mirror the avatar into the top-right hamburger button so it
+    // becomes the visible "user menu" entry-point as in the design.
+    if (dom.hamburger) {
+      dom.hamburger.classList.add('avatar-mode');
+      dom.hamburger.innerHTML = avatar
+        ? `<img src="${avatar}" alt="" style="width:100%;height:100%;border-radius:999px;object-fit:cover;">`
+        : name.charAt(0).toUpperCase();
+    }
+
     setLoggedIn(true);
   } else {
     currentUser = null;
@@ -79,6 +89,12 @@ function renderAuthChrome(session) {
     dom.guestRow.style.display = '';
     dom.googleBtn.disabled = false;
     dom.googleBtn.innerHTML = GOOGLE_SVG;
+
+    if (dom.hamburger) {
+      dom.hamburger.classList.remove('avatar-mode');
+      dom.hamburger.textContent = '☰';
+    }
+
     setLoggedIn(false);
   }
 }
