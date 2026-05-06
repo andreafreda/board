@@ -353,20 +353,22 @@ body.has-clock .board-pill{top:74px;}
 .tb-dot-custom input[type="color"]{position:absolute;inset:0;width:100%;height:100%;
   opacity:0;cursor:pointer;border:none;padding:0;background:none;}
 
-/* Vertical slider — sits flush above the toolbar, kept compact so it
-   never reaches up too far on the screen. */
+/* Vertical slider — value at top, track at bottom. Both extremes of the
+   thumb (Ø 20 px) need 10 px of breathing room so it doesn't spill out
+   of the pill, hence the asymmetric padding/margins below. */
 .vslider-wrap{position:absolute;right:14px;bottom:calc(100% + 4px);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:6px;cursor:ns-resize;user-select:none;touch-action:none;
-  width:36px;padding:6px 0 8px;
+  display:flex;flex-direction:column;align-items:center;
+  gap:4px;cursor:ns-resize;user-select:none;touch-action:none;
+  width:36px;padding:6px 0 12px; /* 12 bottom = thumb half + 2 px breathing */
   background:var(--surface);border:1px solid var(--border);
   border-radius:14px;box-shadow:var(--ssoft);}
 .vslider-val{font-size:.66rem;font-weight:700;color:var(--primary);
   font-variant-numeric:tabular-nums;line-height:1;text-align:center;
-  width:100%;}
-.vslider-track{width:8px;height:56px;
-  /* 12 px breathing room top + bottom so the 20 px thumb never spills */
-  margin:12px 0;
+  width:100%;margin-bottom:8px;}
+.vslider-track{width:8px;height:64px;
+  /* Only need top margin: bottom is handled by the wrap padding so the
+     thumb at value=min sits right at the bottom of the pill. */
+  margin:12px 0 0;
   background:color-mix(in srgb,var(--border) 80%,transparent);
   border-radius:999px;position:relative;}
 .vslider-fill{position:absolute;bottom:0;left:0;right:0;border-radius:999px;background:var(--primary);}
@@ -641,7 +643,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.21</div>
+<div class="version">v.2.0.22</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
@@ -827,11 +829,13 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tb-sep" id="drawSep2"></div>
   <div class="vslider-wrap" id="drawSliderWrap">
     <div class="vslider-val" id="drawSliderVal">7</div>
-    <div class="vslider-preview" id="drawSliderPreview"></div>
     <div class="vslider-track" id="drawSliderTrack">
       <div class="vslider-fill" id="drawSliderFill"></div>
       <div class="vslider-thumb" id="drawSliderThumb"></div>
     </div>
+    <!-- preview swatch moved out of the slider stack — kept hidden so the
+         existing JS that writes to drawSliderPreview still works. -->
+    <div class="vslider-preview" id="drawSliderPreview" style="display:none;"></div>
   </div>
 </div>
 
@@ -841,12 +845,12 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tb-sep"></div>
   <div class="vslider-wrap" id="txtSliderWrap">
     <div class="vslider-val" id="txtSliderVal">15</div>
-    <div class="vslider-preview" id="txtSliderPreview"
-      style="font-weight:700;color:var(--primary);font-size:14px;">A</div>
     <div class="vslider-track" id="txtSliderTrack">
       <div class="vslider-fill" id="txtSliderFill"></div>
       <div class="vslider-thumb" id="txtSliderThumb"></div>
     </div>
+    <div class="vslider-preview" id="txtSliderPreview"
+      style="display:none;font-weight:700;color:var(--primary);font-size:14px;">A</div>
   </div>
 </div>
 
