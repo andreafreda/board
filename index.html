@@ -85,11 +85,14 @@ body.frame-on #board::before{
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 .d-uemail{font-size:.7rem;color:var(--muted);font-weight:400;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.d-close-btn{width:30px;height:30px;border-radius:8px;border:none;
+/* Always-visible close X at the top-right of the drawer (v2.0.10) */
+.drawer-close{position:absolute;top:10px;right:10px;z-index:5;
+  width:30px;height:30px;border-radius:8px;border:none;
   background:color-mix(in srgb,var(--text) 5%,transparent);
   color:var(--muted);display:grid;place-items:center;cursor:pointer;
-  transition:background .15s,color .15s;flex-shrink:0;}
-.d-close-btn:hover{background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text);}
+  font-family:inherit;
+  transition:background .15s,color .15s;}
+.drawer-close:hover{background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text);}
 
 /* Big green new-board button — full width pill below the user card */
 .d-new-board{display:none;width:100%;height:44px;border-radius:12px;border:none;
@@ -234,7 +237,7 @@ body.has-clock .board-pill{top:74px;}
   width:min(320px,100vw);
   background:var(--surface);border-left:1px solid var(--border);
   box-shadow:-12px 0 40px rgba(26,23,20,.10);
-  padding:.9rem .8rem;
+  padding:46px .8rem .8rem; /* extra top padding for the close X */
   transform:translateX(100%);
   transition:transform .25s cubic-bezier(.4,0,.2,1);
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
@@ -620,7 +623,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.9</div>
+<div class="version">v.2.0.10</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
@@ -700,6 +703,11 @@ if (new URLSearchParams(location.search).get('board')) {
 
 <div class="drawer" id="drawer">
 
+  <!-- Close button — always visible, top-right of drawer (v2.0.10) -->
+  <button class="drawer-close" id="drawerCloseBtnTop" type="button" title="Chiudi" aria-label="Chiudi">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+
   <!-- ── Auth ── -->
   <div class="d-auth">
     <div id="authGuestRow">
@@ -718,9 +726,6 @@ if (new URLSearchParams(location.search).get('board')) {
         <span class="d-uname" id="authUserName"></span>
         <span class="d-uemail" id="authUserEmail"></span>
       </div>
-      <button class="d-close-btn" id="drawerCloseBtn" type="button" title="Chiudi" aria-label="Chiudi">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
     </div>
   </div>
 

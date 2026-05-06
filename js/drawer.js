@@ -53,8 +53,11 @@ export function initDrawer() {
   if (dom.boardPill) dom.boardPill.addEventListener('click', () => openDrawer());
   if (dom.drawerBackdrop) dom.drawerBackdrop.addEventListener('click', () => openDrawer(false));
 
-  // v2.0: drawer close button (X in the user-card header)
+  // v2.0: drawer close buttons — both the legacy in-header X (logged-in only)
+  // and the always-visible top-right X (works for guests too).
   if (dom.drawerCloseBtn) dom.drawerCloseBtn.addEventListener('click', () => openDrawer(false));
+  const closeTop = document.getElementById('drawerCloseBtnTop');
+  if (closeTop) closeTop.addEventListener('click', () => openDrawer(false));
 
   // v2.0: dimensioni-board popover — toggle from the toolbar button.
   const bsBtn  = document.getElementById('boardSizeBtn');
