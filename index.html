@@ -37,13 +37,13 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   background-image:radial-gradient(circle,var(--dot) 1.4px,transparent 1.6px);
   background-size:24px 24px;background-position:0 0;}
 
-/* Board */
+/* Board — kept transparent so the viewport dot grid reads through and feels
+   like one continuous canvas. The board is just a logical pannable surface;
+   notes / strokes are positioned on top of the dot pattern. */
 #board{
   position:absolute;top:0;left:0;
   width:1366px;height:768px;
-  background:var(--board);
-  border-radius:var(--radius-lg);
-  box-shadow:0 1px 0 rgba(26,23,20,.04),0 12px 40px rgba(26,23,20,.06);
+  background:transparent;
   transform-origin:0 0;touch-action:none;user-select:none;
 }
 
@@ -113,8 +113,9 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .clock .tl{font-size:.8rem;font-weight:700;}
 .clock .dl{font-size:.66rem;opacity:.65;}
 .clock.hidden{display:none;}
-.version{position:fixed;top:68px;left:14px;z-index:29;
-  font-size:.62rem;color:var(--muted);opacity:.5;font-weight:500;
+/* Version label tucked bottom-left out of the way of the new top chrome */
+.version{position:fixed;bottom:14px;left:14px;z-index:29;
+  font-size:.6rem;color:var(--muted);opacity:.4;font-weight:500;
   letter-spacing:.05em;
   user-select:none;pointer-events:none;padding:0 2px;}
 
@@ -487,7 +488,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.0</div>
+<div class="version">v.2.0.1</div>
 <div class="status-badge" id="statusBadge"></div>
 
 <!-- Board name pill (trigger for drawer, mirrors document.title) -->
