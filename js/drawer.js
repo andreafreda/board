@@ -437,6 +437,12 @@ function startRenameBoard(board, nameEl) {
   inp.value = orig;
   nameEl.replaceWith(inp);
   inp.focus(); inp.select();
+  // v2.0.24: don't let clicks/mousedowns bubble up to the parent row,
+  // whose handler would call switchBoard() and tear down the rename
+  // input the moment the user tries to position their cursor inside it.
+  ['click','mousedown','pointerdown'].forEach((evName) => {
+    inp.addEventListener(evName, (e) => e.stopPropagation());
+  });
   const done = () => {
     board.name = inp.value.trim() || orig;
     nameEl.textContent = board.name;
