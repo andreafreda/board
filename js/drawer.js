@@ -541,7 +541,9 @@ export function renderPresets() {
     b.title = p.title || p.label;
     const isActive = Number(state.boardW) === p.w && Number(state.boardH) === p.h;
     b.className = 'preset-card' + (isActive ? ' active' : '');
-    b.innerHTML = `${PRESET_ICONS[p.kind] || PRESET_ICONS.desktop}<span>${p.label}</span>`;
+    // v2.0.16: icon-only preset cards. The full title still lives on the
+    // tooltip, and the W×H inputs below show the exact numbers.
+    b.innerHTML = PRESET_ICONS[p.kind] || PRESET_ICONS.desktop;
     b.addEventListener('click', () => {
       dom.boardW.value = p.w;
       dom.boardH.value = p.h;
