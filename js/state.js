@@ -19,8 +19,10 @@ export const NOTE_COLOR_MAP = {
   yellow:'#faf0d4', pink:'#f5d4d4', blue:'#d4e4f7', green:'#d4ecd4',
   lilac:'#ead4f5', orange:'#f5e6cc', mint:'#d4ece4',
 };
-export const PEN_COLORS  = ['#1A1714','#1A6B5A','#c0392b','#2a6496','#27ae60','#8e44ad','#ea580c','#ffffff'];
-export const TEXT_COLORS = ['#1A1714','#c0392b','#1A6B5A','#2a6496','#27ae60','#8e44ad','#7c3f00'];
+// 5 quick colors + a "custom" slot rendered as a rainbow swatch
+// that opens a native color picker. Same pattern for pen and text.
+export const PEN_COLORS  = ['#1A1714','#1A6B5A','#c0392b','#2a6496','#ea580c'];
+export const TEXT_COLORS = ['#1A1714','#1A6B5A','#c0392b','#2a6496','#ea580c'];
 
 // v2.0: presets surface as device cards (icon + name) inside the
 // "Dimensioni board" popover. `kind` keys into the SVG icon set in drawer.js.

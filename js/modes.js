@@ -147,6 +147,28 @@ function renderDrawToolbar() {
     dom.penColors.appendChild(b);
   });
 
+  // v2.0.12: rainbow "custom color" swatch — opens a native color picker.
+  // Highlighted when state.penColor isn't one of the quick colors.
+  const isPreset = PEN_COLORS.includes(state.penColor);
+  const customWrap = document.createElement('label');
+  customWrap.className = 'tb-dot tb-dot-custom' + (!isPreset ? ' active' : '');
+  customWrap.title = 'Colore personalizzato';
+  customWrap.style.cssText = !isPreset
+    ? `background:${state.penColor};width:22px;height:22px;`
+    : 'width:22px;height:22px;';
+  const colorIn = document.createElement('input');
+  colorIn.type = 'color';
+  colorIn.value = isPreset ? '#ff5500' : state.penColor;
+  colorIn.addEventListener('input', () => {
+    state.penColor = colorIn.value;
+    state.eraser = false;
+    renderDrawToolbar();
+    updateDrawPreview();
+    save();
+  });
+  customWrap.appendChild(colorIn);
+  dom.penColors.appendChild(customWrap);
+
   if (renderDrawSlider) renderDrawSlider();
   updateDrawPreview();
 }
@@ -189,6 +211,29 @@ function renderTextToolbar(note) {
     });
     dom.txtColors.appendChild(b);
   });
+
+  // v2.0.12: custom color swatch for text too.
+  const isPreset = TEXT_COLORS.includes(note.textColor);
+  const customWrap = document.createElement('label');
+  customWrap.className = 'tb-dot tb-dot-custom' + (!isPreset ? ' active' : '');
+  customWrap.title = 'Colore personalizzato';
+  customWrap.style.cssText = !isPreset
+    ? `background:${note.textColor};width:22px;height:22px;`
+    : 'width:22px;height:22px;';
+  const colorIn = document.createElement('input');
+  colorIn.type = 'color';
+  colorIn.value = isPreset ? '#ff5500' : note.textColor;
+  colorIn.addEventListener('input', (e) => {
+    e.stopPropagation();
+    note.textColor = colorIn.value;
+    const an = getActiveNote();
+    if (an && an.note.id === note.id) an.el.querySelector('textarea').style.color = colorIn.value;
+    renderTextToolbar(note); save();
+    broadcastNoteUpsert(note);
+  });
+  customWrap.appendChild(colorIn);
+  dom.txtColors.appendChild(customWrap);
+
   dom.textToolbar.classList.add('visible');
   if (renderTxtSlider) renderTxtSlider();
 }

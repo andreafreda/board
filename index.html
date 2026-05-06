@@ -256,9 +256,13 @@ body.has-clock .board-pill{top:74px;}
 .dsec{padding:.38rem 0;border-bottom:1px solid var(--border);display:grid;gap:.4rem;}
 .dsec:last-child{border-bottom:0;}
 .drow{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.dbtn{min-height:40px;border-radius:11px;border:1px solid var(--border);
+.dbtn{min-height:40px;flex:1;border-radius:11px;border:1px solid var(--border);
   background:transparent;font-size:.84rem;font-weight:500;color:var(--text);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  font-family:inherit;cursor:pointer;
   transition:background .15s,border-color .15s;}
+.dbtn svg{flex-shrink:0;color:var(--muted);}
+.dbtn.danger svg{color:var(--danger);}
 .dbtn:hover{background:color-mix(in srgb,var(--text) 4%,transparent);
   border-color:color-mix(in srgb,var(--text) 14%,var(--border));}
 .dbtn.danger{color:var(--danger);}
@@ -343,11 +347,18 @@ body.has-clock .board-pill{top:74px;}
 @media (max-width:600px){.tb-btn{width:48px;height:48px;}}
 .tb-dot{border-radius:999px;border:2px solid transparent;flex:0 0 auto;cursor:pointer;align-self:center;}
 .tb-dot.active{border-color:var(--text);}
+/* Rainbow "custom color" swatch — opens a native color picker */
+.tb-dot-custom{position:relative;
+  background:conic-gradient(#ff4d4d,#ffb84d,#fff04d,#7be07b,#4dc8ff,#9b6bff,#ff4d9b,#ff4d4d) !important;}
+.tb-dot-custom input[type="color"]{position:absolute;inset:0;width:100%;height:100%;
+  opacity:0;cursor:pointer;border:none;padding:0;background:none;}
 
-/* Vertical slider */
-.vslider-wrap{position:relative;display:flex;flex-direction:column;align-items:center;
+/* Vertical slider — pops above the toolbar as an absolutely-positioned
+   pill so it never overflows the toolbar's horizontal track on mobile. */
+.vslider-wrap{position:absolute;right:14px;bottom:calc(100% + 8px);
+  display:flex;flex-direction:column;align-items:center;
   gap:4px;cursor:ns-resize;user-select:none;touch-action:none;
-  margin-top:-90px;background:var(--surface);border:1px solid var(--border);
+  background:var(--surface);border:1px solid var(--border);
   border-radius:14px;padding:6px 8px 4px;box-shadow:var(--ssoft);}
 /* Wrap the track in extra padding so the round thumb (20px) never escapes the
    pill when at 0% / 100% — half-thumb (10px) needs room above and below the track. */
@@ -627,7 +638,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.11</div>
+<div class="version">v.2.0.12</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
@@ -750,13 +761,22 @@ if (new URLSearchParams(location.search).get('board')) {
   <!-- ── Actions ── -->
   <div class="d-sec">
     <div style="display:flex;gap:6px;">
-      <button class="dbtn" id="clockToggleBtn" type="button" title="Toggle clock" style="flex:1;font-size:1.15rem;">🕐</button>
-      <button class="dbtn" id="clearSketch" type="button" title="Clear drawings" style="flex:1;font-size:1.15rem;">🧹</button>
-      <button class="dbtn danger" id="resetBtn" type="button" title="Reset board" style="flex:1;font-size:1.15rem;">🗑️</button>
+      <button class="dbtn" id="clockToggleBtn" type="button" title="Mostra/nascondi orologio">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+      </button>
+      <button class="dbtn" id="clearSketch" type="button" title="Cancella tutti i tratti">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13.5 9.5 4 4 9.5 14.5 20 20 13.5z"/><path d="M14 7 7 14"/><path d="M5 21h14"/></svg>
+      </button>
+      <button class="dbtn danger" id="resetBtn" type="button" title="Svuota la board">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
     </div>
     <div style="display:flex;gap:6px;margin-top:6px;">
-      <button class="dbtn" id="exportBtn" type="button" title="Export board" style="flex:1;font-size:1.15rem;">📤</button>
-      <label class="dbtn" title="Import board" style="flex:1;font-size:1.15rem;display:grid;place-items:center;cursor:pointer;">📥
+      <button class="dbtn" id="exportBtn" type="button" title="Esporta board (JSON)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </button>
+      <label class="dbtn" title="Importa board (JSON)" style="cursor:pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <input type="file" id="importFile" accept=".json" style="display:none;"/>
       </label>
     </div>
@@ -772,9 +792,15 @@ if (new URLSearchParams(location.search).get('board')) {
     </div>
     <div style="display:flex;gap:6px;">
       <button class="dbtn" id="exportAllBtn" type="button" title="Esporta tutti i miei dati"
-              style="flex:1;font-size:.78rem;">📦 Esporta tutto</button>
+              style="flex:1;font-size:.78rem;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        Esporta tutto
+      </button>
       <button class="dbtn danger" id="deleteAccountBtn" type="button" title="Elimina account"
-              style="flex:1;font-size:.78rem;">⚠️ Elimina account</button>
+              style="flex:1;font-size:.78rem;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Elimina account
+      </button>
     </div>
   </div>
 
@@ -799,7 +825,9 @@ if (new URLSearchParams(location.search).get('board')) {
 <!-- Draw toolbar -->
 <div class="toolbar" id="drawToolbar">
   <button class="tb-btn active" id="penBtn" type="button">✏️</button>
-  <button class="tb-btn" id="eraserBtn" type="button">🧹</button>
+  <button class="tb-btn" id="eraserBtn" type="button" title="Gomma">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4L13 5l6 6-9.3 9.3a1 1 0 0 1-.7.3H7"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+  </button>
   <div class="tb-sep"></div>
   <div id="penColors" style="display:flex;gap:5px;align-items:center;"></div>
   <div class="tb-sep" id="drawSep2"></div>
