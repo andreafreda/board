@@ -12,7 +12,19 @@ let _client = null;
 export async function getClient() {
   if (_client) return _client;
   const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-  _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // v2.0.14: spell out the auth options.
+  // detectSessionInUrl reads the OAuth hash on first load and persists it.
+  // flowType='implicit' matches our redirect-based Google sign-in (the URL
+  // comes back with #access_token=... and supabase-js parses it).
+  _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'implicit',
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    },
+  });
   return _client;
 }
 

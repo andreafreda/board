@@ -78,7 +78,22 @@ initialRender();
   // localStorage data and the share-link case can decide ownership.
   try {
     const client = await getClient();
-    const { data: { session } } = await client.auth.getSession();
+
+    // v2.0.14: defensive — if we just came back from Google's OAuth and
+    // detectSessionInUrl didn't pick up the hash for some reason, parse
+    // it manually and feed it to setSession. Then strip the hash so a
+    // refresh doesn't reprocess it.
+    if (location.hash.includes('access_token=')) {
+      const params = new URLSearchParams(location.hash.slice(1));
+      const access_token  = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
+      if (access_token && refresh_token) {
+        try { await client.auth.setSession({ access_token, refresh_token }); } catch (e) { console.warn('setSession from hash failed:', e); }
+        history.replaceState({}, '', location.pathname + location.search);
+      }
+    }
+
+    let { data: { session } } = await client.auth.getSession();
     if (window.opener && session) { window.close(); return; }
     await renderAuth(session);
 
