@@ -48,39 +48,68 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 }
 
 /* Auth card */
-.d-auth{padding:.35rem 0 .55rem;border-bottom:1px solid var(--border);margin-bottom:.1rem;}
+/* The d-user-card now carries its own bottom border, so .d-auth doesn't
+   need one when the user is signed in. Keep a small divider for guests. */
+.d-auth{padding:.2rem 0 .4rem;}
+#authGuestRow{padding-bottom:.6rem;border-bottom:1px solid var(--border);}
 .d-google-btn{width:100%;height:46px;border-radius:12px;
   border:1px solid var(--border);background:#fff;
   display:flex;align-items:center;justify-content:center;
   box-shadow:var(--ssoft);transition:box-shadow .15s,transform .15s;}
 .d-google-btn:hover{box-shadow:var(--shadow);transform:translateY(-1px);}
 .d-google-btn:active{transform:translateY(0);}
-.d-user-card{display:flex;align-items:center;gap:10px;padding:.42rem .5rem;
-  border-radius:14px;
-  background:color-mix(in srgb,var(--primary) 9%,transparent);
-  border:1px solid color-mix(in srgb,var(--primary) 22%,transparent);}
-.auth-avatar{width:34px;height:34px;border-radius:999px;
+/* User-card header (v2.0) — avatar + stacked name/email + close X.
+   Visually flat, no green tint background — close to the design prototype. */
+.d-user-card{display:flex;align-items:center;gap:12px;padding:.6rem .5rem 1rem;
+  border-bottom:1px solid var(--border);margin-bottom:.6rem;}
+.auth-avatar{width:40px;height:40px;border-radius:12px;
   background:var(--primary);color:#fff;display:grid;place-items:center;
-  font-size:.82rem;font-weight:700;flex-shrink:0;overflow:hidden;}
-.d-uname{flex:1;font-size:.79rem;font-weight:600;
+  font-size:1rem;font-weight:700;flex-shrink:0;overflow:hidden;}
+.auth-avatar img{width:100%;height:100%;border-radius:12px;object-fit:cover;}
+.d-user-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.d-uname{font-size:.88rem;font-weight:600;color:var(--text);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.d-logout-btn{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
-  font-size:.88rem;border:1px solid var(--border);background:var(--surface);
-  opacity:.6;transition:opacity .15s,color .15s;flex-shrink:0;}
-.d-logout-btn:hover{opacity:1;color:var(--danger);}
+.d-uemail{font-size:.7rem;color:var(--muted);font-weight:400;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.d-close-btn{width:30px;height:30px;border-radius:8px;border:none;
+  background:color-mix(in srgb,var(--text) 5%,transparent);
+  color:var(--muted);display:grid;place-items:center;cursor:pointer;
+  transition:background .15s,color .15s;flex-shrink:0;}
+.d-close-btn:hover{background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text);}
+
+/* Big green new-board button — full width pill below the user card */
+.d-new-board{display:none;width:100%;height:44px;border-radius:12px;border:none;
+  background:var(--primary);color:#fff;cursor:pointer;
+  align-items:center;justify-content:center;
+  margin-bottom:.6rem;
+  box-shadow:0 1px 2px rgba(26,107,90,.18),0 4px 12px rgba(26,107,90,.16);
+  transition:filter .15s,transform .12s;}
+.d-new-board:hover{filter:brightness(1.06);}
+.d-new-board:active{transform:translateY(1px);}
+
+/* Drawer footer — small logout button bottom-left */
+.d-footer{display:none;align-items:center;justify-content:flex-end;
+  padding:.5rem 0 .1rem;margin-top:.4rem;border-top:1px solid var(--border);}
+.d-logout-btn{display:flex;align-items:center;gap:6px;
+  height:34px;padding:0 .8rem;border-radius:10px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--muted);font-size:.78rem;font-weight:500;cursor:pointer;
+  font-family:inherit;transition:background .15s,color .15s,border-color .15s;}
+.d-logout-btn:hover{background:color-mix(in srgb,var(--danger) 8%,transparent);
+  color:var(--danger);border-color:color-mix(in srgb,var(--danger) 30%,var(--border));}
 .auth-spinner{width:18px;height:18px;border-radius:999px;
   border:2px solid var(--border);border-top-color:var(--primary);
   animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Board list in drawer */
+/* Board list section in drawer */
 .d-sec{padding:.42rem 0;border-top:1px solid var(--border);}
-.d-boards-hdr{display:flex;align-items:center;justify-content:flex-end;
-  min-height:22px;margin-bottom:.3rem;}
-#newBoardBtn{width:26px;height:26px;border-radius:8px;font-size:.95rem;font-weight:700;
-  border:1px solid var(--border);background:var(--surface);
-  display:none;place-items:center;}
-#newBoardBtn:hover{background:color-mix(in srgb,var(--primary) 12%,var(--surface));}
+.d-sec-boards{border-top:none;padding-top:.2rem;}
+/* Section divider header: small icon + horizontal rule (Board Redesign v2.0) */
+.d-section-hdr{display:flex;align-items:center;gap:8px;
+  padding:.45rem 8px .35rem;color:var(--muted);opacity:.7;}
+.d-section-hdr svg{flex-shrink:0;}
+.d-section-rule{flex:1;height:1px;background:var(--border);}
 .d-board{display:flex;align-items:center;gap:6px;padding:.3rem .35rem;
   border-radius:10px;cursor:pointer;border:1px solid transparent;transition:background .1s;}
 .d-board:hover{background:color-mix(in srgb,var(--border) 42%,transparent);}
@@ -528,7 +557,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.4</div>
+<div class="version">v.2.0.5</div>
 <div class="status-badge" id="statusBadge"></div>
 
 <!-- Board name pill (trigger for drawer, mirrors document.title) -->
@@ -587,16 +616,23 @@ if (new URLSearchParams(location.search).get('board')) {
     </div>
     <div class="d-user-card" id="authUserRow" style="display:none;">
       <div class="auth-avatar" id="authAvatar"></div>
-      <span class="d-uname" id="authUserName"></span>
-      <button class="d-logout-btn" id="authLogoutBtn" type="button" title="Sign out">↩</button>
+      <div class="d-user-info">
+        <span class="d-uname" id="authUserName"></span>
+        <span class="d-uemail" id="authUserEmail"></span>
+      </div>
+      <button class="d-close-btn" id="drawerCloseBtn" type="button" title="Chiudi" aria-label="Chiudi">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
   </div>
 
+  <!-- ── Big new-board button ── -->
+  <button id="newBoardBtn" class="d-new-board" type="button" title="Nuova board" aria-label="Nuova board">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+
   <!-- ── Boards ── -->
-  <div class="d-sec">
-    <div class="d-boards-hdr">
-      <button id="newBoardBtn" type="button" title="New board">＋</button>
-    </div>
+  <div class="d-sec d-sec-boards">
     <div id="boardsList"></div>
   </div>
 
@@ -643,6 +679,14 @@ if (new URLSearchParams(location.search).get('board')) {
       <button class="dbtn danger" id="deleteAccountBtn" type="button" title="Elimina account"
               style="flex:1;font-size:.78rem;">⚠️ Elimina account</button>
     </div>
+  </div>
+
+  <!-- ── Footer (logout) — small, neutral, end of drawer ── -->
+  <div class="d-footer" id="drawerFooter" style="display:none;">
+    <button class="d-logout-btn" id="authLogoutBtn" type="button" title="Esci">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Esci</span>
+    </button>
   </div>
 
 </div>

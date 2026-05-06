@@ -42,8 +42,10 @@ export const dom = {
   userRow:     $('authUserRow'),
   avatarEl:    $('authAvatar'),
   userName:    $('authUserName'),
+  userEmail:   $('authUserEmail'),
   googleBtn:   $('googleBtn'),
   logoutBtn:   $('authLogoutBtn'),
+  drawerCloseBtn: $('drawerCloseBtn'),
 
   // Toolbars (note / draw / text)
   noteToolbar: $('noteToolbar'),

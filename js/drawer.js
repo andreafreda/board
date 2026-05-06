@@ -53,6 +53,9 @@ export function initDrawer() {
   if (dom.boardPill) dom.boardPill.addEventListener('click', () => openDrawer());
   if (dom.drawerBackdrop) dom.drawerBackdrop.addEventListener('click', () => openDrawer(false));
 
+  // v2.0: drawer close button (X in the user-card header)
+  if (dom.drawerCloseBtn) dom.drawerCloseBtn.addEventListener('click', () => openDrawer(false));
+
   // v2.0: top-right share button — copies the active board's share URL.
   const shareBtn = document.getElementById('shareBtn');
   if (shareBtn) {
@@ -128,8 +131,10 @@ export function renderBoardList() {
   if (!listEl) return;
 
   const isUser = !!_authHooks.getCurrentUser();
-  if (dom.newBoardBtn) dom.newBoardBtn.style.display = isUser ? 'grid' : 'none';
+  if (dom.newBoardBtn) dom.newBoardBtn.style.display = isUser ? 'flex' : 'none';
   if (dom.gdprSection) dom.gdprSection.style.display = isUser ? '' : 'none';
+  const footer = document.getElementById('drawerFooter');
+  if (footer) footer.style.display = isUser ? 'flex' : 'none';
 
   listEl.innerHTML = '';
 
@@ -255,12 +260,17 @@ export function renderBoardList() {
     }
   };
 
-  // Section header helper
-  const renderHeader = (text) => {
+  // Section header helper — v2.0 uses an icon + horizontal rule instead of
+  // a text label, mirroring the prototype's icon-first sectioning.
+  const SECTION_ICONS = {
+    mine:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    shared: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  };
+  const renderHeader = (kind, title) => {
     const h = document.createElement('div');
     h.className = 'd-section-hdr';
-    h.textContent = text;
-    h.style.cssText = 'font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:.5rem .15rem .25rem;';
+    h.title = title;
+    h.innerHTML = `${SECTION_ICONS[kind]}<span class="d-section-rule"></span>`;
     listEl.appendChild(h);
   };
 
@@ -269,11 +279,11 @@ export function renderBoardList() {
   const sharedBoards = state.boards.filter((b) => b.myRole && b.myRole !== 'owner');
 
   if (ownBoards.length) {
-    renderHeader('Le tue board');
+    renderHeader('mine', 'Le tue board');
     ownBoards.forEach(renderEntry);
   }
   if (sharedBoards.length) {
-    renderHeader('Condivise con te');
+    renderHeader('shared', 'Condivise con te');
     sharedBoards.forEach(renderEntry);
   }
 }

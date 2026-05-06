@@ -71,7 +71,8 @@ function renderAuthChrome(session) {
     dom.avatarEl.innerHTML = avatar
       ? `<img src="${avatar}" alt="" style="width:100%;height:100%;border-radius:999px;object-fit:cover;">`
       : name.charAt(0).toUpperCase();
-    if (dom.userName) dom.userName.textContent = name;
+    if (dom.userName)  dom.userName.textContent  = name;
+    if (dom.userEmail) dom.userEmail.textContent = session.user.email || '';
 
     // v2.0: mirror the avatar into the top-right hamburger button so it
     // becomes the visible "user menu" entry-point as in the design.
