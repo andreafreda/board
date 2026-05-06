@@ -55,14 +55,22 @@ function initialRender() {
   renderPresets();
 }
 
+console.info('[v3] step 0 - start');
 initDrawer();
+console.info('[v3] step 1 - drawer ok');
 initDrawerActions();
+console.info('[v3] step 2 - drawer-actions ok');
 initSketchHandlers();
+console.info('[v3] step 3 - sketch ok');
 initPan();
+console.info('[v3] step 4 - pan ok');
 initModes();
+console.info('[v3] step 5 - modes ok');
 initFullscreen();
+console.info('[v3] step 6 - fullscreen ok');
 initGlobalClickHandlers();
-initCalendarMode();
+console.info('[v3] step 7 - global ok');
+try { initCalendarMode(); console.info('[v3] step 8 - cal ok'); } catch (e) { console.error('[v3] cal err:', e.message, e.stack); }
 initClock();
 initDrawSlider();
 initTxtSlider();

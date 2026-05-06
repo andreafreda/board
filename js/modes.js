@@ -348,8 +348,12 @@ export function initModes() {
 
 // ── Calendar mode (v3) — toggle the calendar view on/off ───────────
 export function initCalendarMode() {
-  const btn = dom.calendarModeBtn;
-  if (!btn) return;
+  // Resolve fresh from the DOM in case dom.* was created before the
+  // calendar HTML was added to the page (defensive — the element is in
+  // the file but ES module evaluation order can race in some setups).
+  const btn = dom.calendarModeBtn || document.getElementById('calendarModeBtn');
+  if (!btn) { console.warn('[v3] calendarModeBtn not found'); return; }
+  console.info('[v3] calendar wired');
 
   // Lazy-load the calendar module on first toggle so guests / users who
   // never open the calendar don't pay its render cost.
