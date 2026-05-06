@@ -619,12 +619,34 @@ function initActionButtons() {
       try {
         const imp = JSON.parse(ev.target.result);
         if (typeof imp !== 'object' || !imp.notes) throw new Error('formato non valido');
-        state.notes   = imp.notes   || [];
-        state.strokes = imp.strokes || [];
-        if (imp.width) applyBoardSize(imp.width, imp.height || 768);
-        else { renderNotes(); redrawBoard(); }
-        syncActiveBoard(); save();
-        renderPresets();
+
+        // v2.0.17: never overwrite the currently-open board on import.
+        // Build a brand-new board from the file and switch to it, so the
+        // user's existing work stays untouched.
+        if (getActiveNote()) deactivateNote();
+        syncActiveBoard();
+
+        const b = mkBoard({
+          name:   (imp.name ? imp.name + ' (import)' : 'Imported board'),
+          width:  imp.width  || 1366,
+          height: imp.height || 768,
+        });
+        // mkBoard returns a fresh board with empty notes/strokes —
+        // overwrite those (and not its id / panX / panY) with the file
+        // content. Notes/strokes are deep-cloned so the source object
+        // can't be mutated later.
+        b.notes   = clone(imp.notes   || []);
+        b.strokes = clone(imp.strokes || []);
+
+        state.boards.push(b);
+        state.activeBoardId = b.id;
+        loadBoardIntoState(b);
+        applyBoardSize(b.width, b.height);
+        renderBoardList(); renderPresets();
+        save();
+        _authHooks.sbCreateBoard?.(b);
+        syncCollabChannel();
+
         openDrawer(false);
       } catch (err) {
         alert('Import fallito: ' + err.message);
