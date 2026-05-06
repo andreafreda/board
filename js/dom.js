@@ -95,6 +95,11 @@ export const dom = {
   exportAllBtn:     $('exportAllBtn'),
   deleteAccountBtn: $('deleteAccountBtn'),
 
+  // Top-left board name pill (drawer trigger, mirrors document.title)
+  boardPill:        $('boardPill'),
+  boardPillName:    $('boardPillName'),
+  drawerBackdrop:   $('drawerBackdrop'),
+
   // Confirm popup
   confirmPop:  $('confirmPop'),
   confirmMsg:  $('confirmMsg'),

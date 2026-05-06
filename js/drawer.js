@@ -45,10 +45,24 @@ export function setAuthHooks(h) { _authHooks = { ..._authHooks, ...h }; }
 export function openDrawer(force) {
   const open = force ?? !dom.drawer.classList.contains('open');
   dom.drawer.classList.toggle('open', open);
+  if (dom.drawerBackdrop) dom.drawerBackdrop.classList.toggle('on', open);
 }
 
 export function initDrawer() {
   dom.hamburger.addEventListener('click', () => openDrawer());
+  if (dom.boardPill) dom.boardPill.addEventListener('click', () => openDrawer());
+  if (dom.drawerBackdrop) dom.drawerBackdrop.addEventListener('click', () => openDrawer(false));
+
+  // Mirror document.title into the board-name pill so it always reflects
+  // the active board without having to thread state through every caller.
+  const titleEl = document.querySelector('title');
+  const sync = () => {
+    const t = (document.title || 'Board').replace(/ · Board$/, '');
+    if (dom.boardPillName) dom.boardPillName.textContent = t;
+    if (dom.boardPill) dom.boardPill.classList.add('on');
+  };
+  sync();
+  if (titleEl) new MutationObserver(sync).observe(titleEl, { childList: true });
 }
 
 // ════════════════════════════════════════════════════════════════════

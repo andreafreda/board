@@ -12,7 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --bg:#FAF8F5;--board:#FFFFFF;--dot:#D8D0C4;
+  --bg:#FAF8F5;--board:#FFFFFF;--dot:#CDC2B0;
   --text:#1A1714;--muted:#8a8278;--border:rgba(26,23,20,.08);
   --surface:rgba(255,255,255,.92);--shadow:0 16px 48px rgba(26,23,20,.12);
   --ssoft:0 2px 12px rgba(26,23,20,.07);--primary:#1A6B5A;--danger:#c0392b;
@@ -34,8 +34,8 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 /* Viewport — dot grid background lives on the viewport so it covers the canvas
    even outside the board edges (the design treats the whole canvas as paper). */
 #viewport{position:fixed;inset:0;overflow:hidden;background:var(--bg);
-  background-image:radial-gradient(circle,var(--dot) 1px,transparent 1.2px);
-  background-size:28px 28px;background-position:0 0;}
+  background-image:radial-gradient(circle,var(--dot) 1.4px,transparent 1.6px);
+  background-size:24px 24px;background-position:0 0;}
 
 /* Board */
 #board{
@@ -118,6 +118,23 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   letter-spacing:.05em;
   user-select:none;pointer-events:none;padding:0 2px;}
 
+/* Board-name pill — top-left trigger that mirrors document.title (active board).
+   Tapping it opens the drawer (where the board list lives). */
+.board-pill{position:fixed;top:14px;left:14px;z-index:38;
+  display:none;align-items:center;gap:6px;
+  padding:.42rem .8rem;border-radius:12px;
+  background:var(--surface);border:1px solid var(--border);box-shadow:var(--ssoft);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  font-size:.82rem;font-weight:500;color:var(--text);
+  max-width:calc(100vw - 240px);overflow:hidden;
+  cursor:pointer;transition:background .15s;}
+.board-pill.on{display:inline-flex;}
+.board-pill:hover{background:color-mix(in srgb,var(--text) 4%,var(--surface));}
+.board-pill .bp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.board-pill .bp-caret{flex-shrink:0;opacity:.55;font-size:.7rem;}
+/* When the clock is visible, push the pill below it */
+body.has-clock .board-pill{top:74px;}
+
 /* Corner — top-right grouped pill: T / pen / note / hamburger.
    Looks like a single floating capsule with subtle separators. */
 .corner{position:fixed;top:14px;right:14px;z-index:40;display:flex;gap:2px;
@@ -134,15 +151,23 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
 .cbtn#hamburger{background:var(--primary);color:#fff;font-weight:700;}
 .cbtn#hamburger:hover{filter:brightness(1.06);}
 
-/* Drawer — anchored top-right under the corner pill */
-.drawer{position:fixed;top:62px;right:14px;z-index:45;
-  width:min(320px,calc(100vw - 28px));
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:.7rem;
-  display:none;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  max-height:calc(100dvh - 80px);overflow-y:auto;}
-.drawer.open{display:block;animation:drawerIn .17s cubic-bezier(.22,.5,.36,1);}
-@keyframes drawerIn{from{opacity:0;transform:translateY(-7px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+/* Drawer — full-height slide-in from the right (Board Redesign v2.0) */
+.drawer{position:fixed;top:0;right:0;height:100dvh;z-index:60;
+  width:min(320px,100vw);
+  background:var(--surface);border-left:1px solid var(--border);
+  box-shadow:-12px 0 40px rgba(26,23,20,.10);
+  padding:.9rem .8rem;
+  transform:translateX(100%);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  overflow-y:auto;display:block;visibility:hidden;}
+.drawer.open{transform:translateX(0);visibility:visible;}
+@media (max-width:600px){.drawer{width:100vw;border-left:none;}}
+/* Backdrop behind drawer */
+.drawer-backdrop{position:fixed;inset:0;z-index:55;
+  background:rgba(26,23,20,.18);backdrop-filter:blur(2px);
+  opacity:0;pointer-events:none;transition:opacity .2s;}
+.drawer-backdrop.on{opacity:1;pointer-events:auto;}
 .dsec{padding:.38rem 0;border-bottom:1px solid var(--border);display:grid;gap:.4rem;}
 .dsec:last-child{border-bottom:0;}
 .drow{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
@@ -300,9 +325,11 @@ button,textarea,input{font:inherit;color:inherit;border:none;background:none;cur
   display:flex;align-items:center;justify-content:flex-end;
   padding:5px 7px 0 0;gap:5px;cursor:grab;}
 .note.dragging .note-head{cursor:grabbing;}
-.mini-btn{width:28px;height:28px;border-radius:999px;
-  background:rgba(255,255,255,.82);box-shadow:0 1px 5px rgba(0,0,0,.08);
-  display:grid;place-items:center;color:#4b5563;font-size:.95rem;}
+.mini-btn{width:22px;height:22px;border-radius:50%;
+  background:rgba(26,23,20,.08);
+  display:grid;place-items:center;color:rgba(26,23,20,.6);font-size:.8rem;
+  transition:background .12s,color .12s;border:none;}
+.mini-btn:hover{background:rgba(26,23,20,.16);color:rgba(26,23,20,.9);}
 .note textarea{width:100%;flex:1;border:0;outline:0;background:transparent;
   resize:none;padding-top:.3rem;line-height:1.4;pointer-events:none;}
 .note textarea.editable{pointer-events:auto;}
@@ -450,6 +477,15 @@ if (new URLSearchParams(location.search).get('board')) {
 </div>
 <div class="version">v.2.0.0</div>
 <div class="status-badge" id="statusBadge"></div>
+
+<!-- Board name pill (trigger for drawer, mirrors document.title) -->
+<button class="board-pill" id="boardPill" type="button" title="Cambia board">
+  <span class="bp-name" id="boardPillName">Board</span>
+  <span class="bp-caret">▾</span>
+</button>
+
+<!-- Drawer backdrop (closes the drawer on click) -->
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
 
 <div class="corner">
   <button class="cbtn" id="textModeBtn" title="Testo" type="button">T</button>

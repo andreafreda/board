@@ -26,6 +26,8 @@ export function updateClock() {
   dom.timeLine.textContent = fmtTime();
   dom.dateLine.textContent = fmtDate();
   dom.clockEl.classList.toggle('hidden', !state.showClock);
+  // Reflect on body so the board-name pill can shift below the clock.
+  document.body.classList.toggle('has-clock', !!state.showClock);
 }
 
 export function initClock() {
@@ -295,7 +297,10 @@ export function initFullscreen() {
 // ── Global click → close drawer / dismiss note-mode ─────────────────
 export function initGlobalClickHandlers() {
   document.addEventListener('click', (e) => {
-    if (!dom.drawer.contains(e.target) && e.target !== dom.hamburger) _openDrawer(false);
+    // Drawer auto-close: ignore clicks on the drawer itself, the hamburger, or
+    // the new top-left board-name pill (also a drawer trigger in v2.0).
+    const onPill = dom.boardPill && dom.boardPill.contains(e.target);
+    if (!dom.drawer.contains(e.target) && e.target !== dom.hamburger && !onPill) _openDrawer(false);
 
     if (!dom.noteToolbar.contains(e.target) && e.target !== dom.noteModeBtn) {
       state.noteMode = false;
