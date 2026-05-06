@@ -55,22 +55,30 @@ function initialRender() {
   renderPresets();
 }
 
-console.info('[v3] step 0 - start');
-initDrawer();
-console.info('[v3] step 1 - drawer ok');
-initDrawerActions();
-console.info('[v3] step 2 - drawer-actions ok');
-initSketchHandlers();
-console.info('[v3] step 3 - sketch ok');
-initPan();
-console.info('[v3] step 4 - pan ok');
-initModes();
-console.info('[v3] step 5 - modes ok');
-initFullscreen();
-console.info('[v3] step 6 - fullscreen ok');
-initGlobalClickHandlers();
-console.info('[v3] step 7 - global ok');
-try { initCalendarMode(); console.info('[v3] step 8 - cal ok'); } catch (e) { console.error('[v3] cal err:', e.message, e.stack); }
+// v3 diagnostic — write to a visible marker on the page so we can see
+// even if the user has console filters that hide info logs.
+const _v3mark = (msg) => {
+  let el = document.getElementById('__v3marker');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '__v3marker';
+    el.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#1A6B5A;color:#fff;font:600 11px monospace;padding:4px 10px;border-radius:0 0 6px 6px;pointer-events:none;';
+    document.body.appendChild(el);
+  }
+  el.textContent = '[v3] ' + msg;
+  console.warn('[v3]', msg);
+};
+
+_v3mark('step 0');
+initDrawer();          _v3mark('step 1 drawer');
+initDrawerActions();   _v3mark('step 2 drawer-actions');
+initSketchHandlers();  _v3mark('step 3 sketch');
+initPan();             _v3mark('step 4 pan');
+initModes();           _v3mark('step 5 modes');
+initFullscreen();      _v3mark('step 6 fullscreen');
+initGlobalClickHandlers(); _v3mark('step 7 global');
+try { initCalendarMode(); _v3mark('step 8 cal OK'); }
+catch (e) { _v3mark('CAL ERR: ' + e.message); console.error(e); }
 initClock();
 initDrawSlider();
 initTxtSlider();
