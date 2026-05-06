@@ -111,10 +111,10 @@ body.frame-on #board::before{
 /* Drawer footer — small logout button bottom-left */
 .d-footer{display:none;align-items:center;justify-content:flex-end;
   padding:.5rem 0 .1rem;margin-top:.4rem;border-top:1px solid var(--border);}
-.d-logout-btn{display:flex;align-items:center;gap:6px;
-  height:34px;padding:0 .8rem;border-radius:10px;
+.d-logout-btn{display:grid;place-items:center;
+  width:34px;height:34px;padding:0;border-radius:10px;
   border:1px solid var(--border);background:transparent;
-  color:var(--muted);font-size:.78rem;font-weight:500;cursor:pointer;
+  color:var(--muted);cursor:pointer;
   font-family:inherit;transition:background .15s,color .15s,border-color .15s;}
 .d-logout-btn:hover{background:color-mix(in srgb,var(--danger) 8%,transparent);
   color:var(--danger);border-color:color-mix(in srgb,var(--danger) 30%,var(--border));}
@@ -650,7 +650,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.24</div>
+<div class="version">v.2.0.25</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
@@ -807,11 +807,10 @@ if (new URLSearchParams(location.search).get('board')) {
     </div>
   </div>
 
-  <!-- ── Footer (logout) — small, neutral, end of drawer ── -->
+  <!-- ── Footer (logout) — icon-only, neutral, end of drawer ── -->
   <div class="d-footer" id="drawerFooter" style="display:none;">
-    <button class="d-logout-btn" id="authLogoutBtn" type="button" title="Esci">
+    <button class="d-logout-btn" id="authLogoutBtn" type="button" title="Esci" aria-label="Esci">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span>Esci</span>
     </button>
   </div>
 
