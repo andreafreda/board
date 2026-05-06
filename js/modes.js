@@ -314,12 +314,18 @@ export function initFullscreen() {
 // ── Global click → close drawer / dismiss note-mode ─────────────────
 export function initGlobalClickHandlers() {
   document.addEventListener('click', (e) => {
-    // Drawer auto-close: ignore clicks on the drawer itself, the hamburger, or
-    // the new top-left board-name pill (also a drawer trigger in v2.0).
-    const onPill = dom.boardPill && dom.boardPill.contains(e.target);
-    if (!dom.drawer.contains(e.target) && e.target !== dom.hamburger && !onPill) _openDrawer(false);
+    // Drawer auto-close: any click outside the drawer chrome should close it,
+    // EXCEPT clicks that originated inside one of its known triggers.
+    // (We must use .contains() — when the hamburger holds an <img> avatar
+    // or the mode buttons hold an <svg>, e.target is the descendant element,
+    // not the button itself, so a strict === check would close the drawer
+    // even when the user clicked the trigger.)
+    const onTrigger =
+      (dom.hamburger && dom.hamburger.contains(e.target)) ||
+      (dom.boardPill && dom.boardPill.contains(e.target));
+    if (!dom.drawer.contains(e.target) && !onTrigger) _openDrawer(false);
 
-    if (!dom.noteToolbar.contains(e.target) && e.target !== dom.noteModeBtn) {
+    if (!dom.noteToolbar.contains(e.target) && !dom.noteModeBtn.contains(e.target)) {
       state.noteMode = false;
       dom.noteModeBtn.classList.remove('on');
       dom.noteToolbar.classList.remove('visible');

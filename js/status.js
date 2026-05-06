@@ -20,15 +20,18 @@ let _savedFlashTimer = null;
 // Position the status badge just to the right of the board pill.
 // Uses the pill's measured right-edge so it always hugs it, regardless
 // of how long the active board's name is.
+// Anchor the status badge next to the board pill when visible, otherwise
+// fall back to a fixed top-left slot under the clock (v2.0.8: the pill was
+// removed from the chrome — the avatar is the sole drawer trigger).
 function placeBadgeNextToPill() {
-  const el   = dom.statusBadge;
+  const el = dom.statusBadge;
+  if (!el) return;
   const pill = document.getElementById('boardPill');
-  if (!el || !pill) return;
-  // Wait one frame for the pill's layout if it just appeared.
-  const r = pill.getBoundingClientRect();
-  if (r.width > 0) {
-    const left = Math.round(r.right + 6);
-    el.style.left = left + 'px';
+  const r = pill?.getBoundingClientRect();
+  if (r && r.width > 0) {
+    el.style.left = Math.round(r.right + 6) + 'px';
+  } else {
+    el.style.left = '14px';
   }
 }
 

@@ -176,7 +176,9 @@ body:not(.has-clock) .version{top:18px;left:80px;}
   max-width:max(140px, calc(100vw - 240px));
   transition:background .15s;font-family:inherit;}
 body.has-clock .board-pill{top:74px;}
-.board-pill.on{display:inline-flex;}
+/* Hidden in v2.0.8 — only the avatar/hamburger opens the drawer now.
+   The element stays in the DOM (some modules read its name span). */
+.board-pill.on{display:none;}
 .board-pill:hover{background:color-mix(in srgb,var(--text) 4%,var(--surface));}
 .board-pill .bp-name{flex:0 1 auto;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -618,7 +620,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.7</div>
+<div class="version">v.2.0.8</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
