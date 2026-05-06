@@ -353,21 +353,19 @@ body.has-clock .board-pill{top:74px;}
 .tb-dot-custom input[type="color"]{position:absolute;inset:0;width:100%;height:100%;
   opacity:0;cursor:pointer;border:none;padding:0;background:none;}
 
-/* Vertical slider — pops above the toolbar as an absolutely-positioned
-   pill. The wrap is fixed-width with explicit padding that fits the
-   thumb at both extremes (thumb radius is 10 px; we use 12 px of
-   breathing room above and below the track). */
-.vslider-wrap{position:absolute;right:14px;bottom:calc(100% + 8px);
+/* Vertical slider — sits flush above the toolbar, kept compact so it
+   never reaches up too far on the screen. */
+.vslider-wrap{position:absolute;right:14px;bottom:calc(100% + 4px);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:8px;cursor:ns-resize;user-select:none;touch-action:none;
-  width:36px;padding:8px 0 10px;
+  gap:6px;cursor:ns-resize;user-select:none;touch-action:none;
+  width:36px;padding:6px 0 8px;
   background:var(--surface);border:1px solid var(--border);
   border-radius:14px;box-shadow:var(--ssoft);}
 .vslider-val{font-size:.66rem;font-weight:700;color:var(--primary);
   font-variant-numeric:tabular-nums;line-height:1;text-align:center;
   width:100%;}
-.vslider-track{width:8px;height:72px;
-  /* 12 px room top + bottom so the 20 px thumb never spills out of the wrap */
+.vslider-track{width:8px;height:56px;
+  /* 12 px breathing room top + bottom so the 20 px thumb never spills */
   margin:12px 0;
   background:color-mix(in srgb,var(--border) 80%,transparent);
   border-radius:999px;position:relative;}
@@ -643,7 +641,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.2.0.19</div>
+<div class="version">v.2.0.20</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
