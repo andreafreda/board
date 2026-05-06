@@ -290,7 +290,26 @@ export function initAuth() {
     }
   });
 
-  dom.logoutBtn.addEventListener('click', async () => {
-    (await getClient()).auth.signOut();
-  });
+  if (dom.logoutBtn) {
+    dom.logoutBtn.addEventListener('click', async () => {
+      // v2.0.9: harden the logout flow.
+      //  * disable the button while the request is in flight (multiple
+      //    clicks were silently queueing redundant signOuts);
+      //  * await the call so we can surface failures;
+      //  * always force a renderAuth(null) afterwards — onAuthStateChange
+      //    sometimes doesn't fire (e.g. when the local session was already
+      //    invalid) and the UI was left in 'logged-in' state.
+      dom.logoutBtn.disabled = true;
+      try {
+        const client = await getClient();
+        const { error } = await client.auth.signOut();
+        if (error) console.warn('signOut error:', error);
+      } catch (e) {
+        console.warn('signOut threw:', e);
+      } finally {
+        dom.logoutBtn.disabled = false;
+      }
+      try { await renderAuth(null); } catch {}
+    });
+  }
 }
