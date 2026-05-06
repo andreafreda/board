@@ -79,18 +79,40 @@ initialRender();
   try {
     const client = await getClient();
 
-    // v2.0.14: defensive — if we just came back from Google's OAuth and
-    // detectSessionInUrl didn't pick up the hash for some reason, parse
-    // it manually and feed it to setSession. Then strip the hash so a
-    // refresh doesn't reprocess it.
+    // v2.0.15: handle both OAuth callback shapes manually as a safety net
+    // in case detectSessionInUrl didn't pick them up (some browser/CSP
+    // combinations skip it). Logs to the console so we can see what
+    // path actually fired in production.
     if (location.hash.includes('access_token=')) {
+      // Implicit flow — hash carries the tokens directly.
       const params = new URLSearchParams(location.hash.slice(1));
       const access_token  = params.get('access_token');
       const refresh_token = params.get('refresh_token');
+      console.info('[auth] OAuth implicit callback detected (hash)');
       if (access_token && refresh_token) {
-        try { await client.auth.setSession({ access_token, refresh_token }); } catch (e) { console.warn('setSession from hash failed:', e); }
+        try {
+          const { error } = await client.auth.setSession({ access_token, refresh_token });
+          if (error) console.warn('[auth] setSession error:', error);
+          else console.info('[auth] setSession ok');
+        } catch (e) {
+          console.warn('[auth] setSession threw:', e);
+        }
         history.replaceState({}, '', location.pathname + location.search);
       }
+    } else if (new URLSearchParams(location.search).get('code')) {
+      // PKCE flow — query has ?code=... (newer Supabase default).
+      console.info('[auth] OAuth PKCE callback detected (code)');
+      try {
+        const { error } = await client.auth.exchangeCodeForSession(location.search);
+        if (error) console.warn('[auth] exchangeCodeForSession error:', error);
+        else console.info('[auth] exchangeCodeForSession ok');
+      } catch (e) {
+        console.warn('[auth] exchangeCodeForSession threw:', e);
+      }
+      const sp = new URLSearchParams(location.search);
+      sp.delete('code'); sp.delete('state');
+      const q = sp.toString();
+      history.replaceState({}, '', location.pathname + (q ? '?' + q : ''));
     }
 
     let { data: { session } } = await client.auth.getSession();
