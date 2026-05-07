@@ -328,40 +328,14 @@ function renderHeader() {
 let _onLeave = null;
 export function setOnLeave(fn) { _onLeave = fn; }
 
-function renderAllDayPill(e) {
-  const isTask = e.kind === 'task';
-  const isBday = e.kind === 'birthday';
-  const icon = isTask ? '✓' : (isBday ? '🎂' : '');
-  return `
-    <div class="cal-allday-pill ${isTask ? 'is-task' : ''} ${isBday ? 'is-bday' : ''} ${e.completed ? 'done' : ''}"
-         data-event-id="${e.id}"
-         style="--c:${accountColor(e)}">
-      ${icon ? `<span class="cal-allday-icon">${icon}</span>` : ''}
-      <span class="cal-allday-title">${escape(e.title)}</span>
-    </div>
-  `;
-}
-
-function splitDayEvents(c) {
-  const all = calState.events.filter(e => sameDay(new Date(e.startAt), c));
-  return {
-    allDay: all.filter(e => e.allDay).sort((a, b) => (a.kind || '').localeCompare(b.kind || '')),
-    timed:  all.filter(e => !e.allDay).sort((a, b) => new Date(a.startAt) - new Date(b.startAt)),
-  };
-}
-
 function renderDay() {
   const c = calState.cursor;
-  const { allDay, timed } = splitDayEvents(c);
+  const todayEvents = calState.events
+    .filter(e => sameDay(new Date(e.startAt), c))
+    .sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
   const isToday = sameDay(c, new Date());
 
   return `
-    ${allDay.length ? `
-      <div class="cal-allday-strip cal-allday-strip-day">
-        <div class="cal-allday-strip-label">Tutto il giorno</div>
-        <div class="cal-allday-strip-list">${allDay.map(renderAllDayPill).join('')}</div>
-      </div>
-    ` : ''}
     <div class="cal-grid cal-grid-day">
       <div class="cal-time-col">
         ${Array.from({ length: END_H - START_H + 1 }, (_, i) => `
@@ -373,7 +347,7 @@ function renderDay() {
       <div class="cal-day-col" data-day="0">
         ${Array.from({ length: END_H - START_H + 1 }, () => '<div class="cal-time-slot"></div>').join('')}
         ${isToday ? renderNowLine() : ''}
-        ${timed.map(renderEventBlock).join('')}
+        ${todayEvents.map(renderEventBlock).join('')}
       </div>
     </div>
   `;
@@ -391,25 +365,13 @@ function renderWeek() {
     </div>
   `).join('');
 
-  // Per-day split into all-day vs timed
-  const splits = days.map(d => splitDayEvents(d));
-  const hasAnyAllDay = splits.some(s => s.allDay.length > 0);
-
-  const allDayRow = hasAnyAllDay ? `
-    <div class="cal-allday-strip cal-allday-strip-week">
-      <div class="cal-allday-strip-label">Tutto il giorno</div>
-      ${splits.map(s => `
-        <div class="cal-allday-cell">${s.allDay.map(renderAllDayPill).join('')}</div>
-      `).join('')}
-    </div>
-  ` : '';
-
   const cols = days.map((d, i) => {
+    const dayEv = calState.events.filter(e => sameDay(new Date(e.startAt), d));
     return `
       <div class="cal-day-col" data-day="${i}">
         ${Array.from({ length: END_H - START_H + 1 }, () => '<div class="cal-time-slot"></div>').join('')}
         ${sameDay(d, today) ? renderNowLine() : ''}
-        ${splits[i].timed.map(renderEventBlock).join('')}
+        ${dayEv.map(renderEventBlock).join('')}
       </div>
     `;
   }).join('');
@@ -419,7 +381,6 @@ function renderWeek() {
       <div class="cal-time-col-head"></div>
       ${headers}
     </div>
-    ${allDayRow}
     <div class="cal-grid cal-grid-week">
       <div class="cal-time-col">
         ${Array.from({ length: END_H - START_H + 1 }, (_, i) => `
@@ -723,14 +684,50 @@ export async function setActive(on) {
   document.body.classList.toggle('cal-mode', on);
   closeEventPopover();
   if (!on) return;
-  // Render immediately with whatever we have (mock or last fetch),
-  // then fetch fresh if the user has connected accounts.
-  renderCalendar();
+
   if (getCurrentUser()) {
+    // Logged-in: avoid the brief flash of the empty-state ("Connect Google")
+    // before we know whether the user actually has connections. Show a thin
+    // loading skeleton instead, then render real data once the round-trip
+    // completes. The cached events from a previous session (if any) stay
+    // visible during the load by leaving them in calState.events.
+    if (calState.source === 'unknown' || calState.events.length === 0) {
+      renderLoading();
+    } else {
+      renderCalendar();
+    }
     await loadConnections();
     await loadEvents();
     if (calState.active) renderCalendar();
+  } else {
+    // Logged-out: show mocks so the calendar looks alive
+    if (calState.events.length === 0) {
+      calState.events = buildMockEvents();
+      calState.source = 'mock';
+    }
+    renderCalendar();
   }
+}
+
+function renderLoading() {
+  const root = dom.calendarView;
+  if (!root) return;
+  root.innerHTML = `
+    <div class="cal-header">
+      ${renderHeader()}
+    </div>
+    <div class="cal-body cal-loading">
+      <div class="cal-loading-spinner"></div>
+    </div>
+  `;
+  // Wire just enough so the user can leave / switch view while loading.
+  root.querySelector('[data-cal-back]')?.addEventListener('click', () => { if (_onLeave) _onLeave(); });
+  root.querySelectorAll('[data-cal-view]').forEach(b => {
+    b.addEventListener('click', () => { calState.view = b.dataset.calView; renderLoading(); });
+  });
+  root.querySelectorAll('[data-cal-nav]').forEach(b => {
+    b.addEventListener('click', () => navigate(b.dataset.calNav));
+  });
 }
 
 export function isActive() { return calState.active; }
@@ -808,7 +805,7 @@ function renderCalendar() {
   root.querySelectorAll('[data-cal-connect]').forEach(b => {
     b.addEventListener('click', () => connectGoogle());
   });
-  root.querySelectorAll('.cal-event, .cal-mevent, .cal-allday-pill').forEach(el => {
+  root.querySelectorAll('.cal-event, .cal-mevent').forEach(el => {
     el.addEventListener('click', (ev) => {
       ev.stopPropagation();
       openEventPopover(el.dataset.eventId, el);

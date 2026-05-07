@@ -855,37 +855,18 @@ body.cal-mode .board-pill{display:none !important;}
 .mp-btn.cal-toggle.on{background:color-mix(in srgb,var(--primary) 16%,transparent);
   color:var(--primary);}
 
-/* All-day events strip (tasks + birthdays + multi-day events) */
-.cal-allday-strip{display:grid;align-items:start;
-  border-bottom:1px solid var(--border);
-  background:color-mix(in srgb,var(--surface) 90%,var(--bg));
-  min-height:32px;}
-.cal-allday-strip-day{grid-template-columns:64px 1fr;}
-.cal-allday-strip-week{grid-template-columns:64px repeat(7,1fr);}
-.cal-allday-strip-label{padding:8px 4px 6px;
-  font:600 9.5px 'DM Sans';letter-spacing:.5px;text-transform:uppercase;
-  color:var(--muted);text-align:right;}
-.cal-allday-strip-list,
-.cal-allday-cell{display:flex;flex-direction:column;gap:3px;
-  padding:6px 4px;border-left:1px solid color-mix(in srgb,var(--border) 70%,transparent);
-  min-height:32px;}
-.cal-allday-pill{display:flex;align-items:center;gap:5px;
-  padding:3px 8px;border-radius:6px;
-  background:color-mix(in srgb,var(--c) 14%,transparent);
-  border-left:3px solid var(--c);
-  font:600 11px 'DM Sans';color:var(--text);
-  cursor:pointer;overflow:hidden;
-  white-space:nowrap;text-overflow:ellipsis;
-  transition:transform .12s,box-shadow .15s;}
-.cal-allday-pill:hover{transform:translateY(-1px);
-  box-shadow:0 4px 12px color-mix(in srgb,var(--c) 25%,transparent);}
-.cal-allday-pill.is-task{background:color-mix(in srgb,#E8A33D 14%,transparent);
+/* Tasks (orange/amber) — distinct from regular events */
+.cal-event[data-event-id*=":task:"]{
+  background:color-mix(in srgb,#E8A33D 16%,transparent);
   border-left-color:#E8A33D;}
-.cal-allday-pill.is-task.done .cal-allday-title{text-decoration:line-through;opacity:.6;}
-.cal-allday-pill.is-bday{background:color-mix(in srgb,#E67C5C 12%,transparent);
-  border-left-color:#E67C5C;}
-.cal-allday-icon{flex-shrink:0;font-size:11px;}
-.cal-allday-title{overflow:hidden;text-overflow:ellipsis;}
+
+/* Loading skeleton — shown while we fetch connections + events to avoid
+   a flash of the empty-state ("connect calendar") screen. */
+.cal-loading{display:grid;place-items:center;min-height:60vh;background:var(--board);}
+.cal-loading-spinner{width:32px;height:32px;border-radius:50%;
+  border:3px solid var(--border);border-top-color:var(--primary);
+  animation:calSpin 0.8s linear infinite;}
+@keyframes calSpin{to{transform:rotate(360deg);}}
 
 /* Connection chips strip — under the header, above the body */
 .cal-conns{display:flex;gap:8px;flex-wrap:wrap;
@@ -982,7 +963,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.3.1.5</div>
+<div class="version">v.3.1.6</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
