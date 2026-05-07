@@ -123,9 +123,11 @@ const accountColor = (e) => {
 };
 
 // ── Real provider data via Edge Functions ──────────────────────────
-const SUPABASE_URL    = 'https://qphyrsdtegxvnwaqixeb.supabase.co';
-const FN_OAUTH_GOOGLE = `${SUPABASE_URL}/functions/v1/calendar-oauth-google`;
-const FN_EVENTS_GOOGLE = `${SUPABASE_URL}/functions/v1/calendar-events-google`;
+const SUPABASE_URL          = 'https://qphyrsdtegxvnwaqixeb.supabase.co';
+const FN_OAUTH_GOOGLE       = `${SUPABASE_URL}/functions/v1/calendar-oauth-google`;
+const FN_EVENTS_GOOGLE      = `${SUPABASE_URL}/functions/v1/calendar-events-google`;
+const FN_OAUTH_MICROSOFT    = `${SUPABASE_URL}/functions/v1/calendar-oauth-microsoft`;
+const FN_EVENTS_MICROSOFT   = `${SUPABASE_URL}/functions/v1/calendar-events-microsoft`;
 
 async function getAccessToken() {
   const client = await getClient();
@@ -156,38 +158,53 @@ export async function loadEvents() {
     calState.source = 'mock';
     return;
   }
-  if (calState.connections.length === 0) {
+
+  const googleConns = calState.connections.filter(c => c.provider === 'google'    && c.enabled !== false);
+  const msConns     = calState.connections.filter(c => c.provider === 'microsoft' && c.enabled !== false);
+
+  if (googleConns.length === 0 && msConns.length === 0) {
     calState.events = [];
     calState.source = 'empty';
     return;
   }
+
   calState.loading = true;
   calState.error   = null;
   try {
     const token = await getAccessToken();
     if (!token) throw new Error('not signed in');
+
     // Fetch a 4-week window centred on the current cursor so navigation
     // back/forward stays inside the cache for a while.
     const c = calState.cursor;
     const min = new Date(c); min.setDate(min.getDate() - 21); min.setHours(0,0,0,0);
     const max = new Date(c); max.setDate(max.getDate() + 21); max.setHours(23,59,59,999);
-    const res = await fetch(FN_EVENTS_GOOGLE, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${token}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ time_min: min.toISOString(), time_max: max.toISOString() }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const json = await res.json();
-    // v3.1.3: surface diag so we can triage "no events" cases.
-    console.info('[cal] events response:', {
-      count: (json.events || []).length,
-      diag: json.diag,
-      accounts: json.accounts,
-    });
-    calState.events = json.events || [];
+    const body    = JSON.stringify({ time_min: min.toISOString(), time_max: max.toISOString() });
+    const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+
+    // Fire both providers in parallel; a failure in one doesn't block the other.
+    const fetches = [];
+    if (googleConns.length > 0) {
+      fetches.push(
+        fetch(FN_EVENTS_GOOGLE, { method: 'POST', headers, body })
+          .then(r => r.ok ? r.json() : r.text().then(t => { throw new Error(t); }))
+          .then(j => j.events || [])
+          .catch(e => { console.warn('[cal] google events failed:', e.message); return []; }),
+      );
+    }
+    if (msConns.length > 0) {
+      fetches.push(
+        fetch(FN_EVENTS_MICROSOFT, { method: 'POST', headers, body })
+          .then(r => r.ok ? r.json() : r.text().then(t => { throw new Error(t); }))
+          .then(j => j.events || [])
+          .catch(e => { console.warn('[cal] microsoft events failed:', e.message); return []; }),
+      );
+    }
+
+    const results = await Promise.all(fetches);
+    const all = results.flat();
+    all.sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
+    calState.events = all;
     calState.source = 'real';
   } catch (e) {
     console.warn('[cal] loadEvents failed:', e.message);
@@ -221,6 +238,32 @@ export async function connectGoogle() {
     location.href = url;
   } catch (e) {
     console.error('[cal] connectGoogle failed:', e);
+    alert('Connessione fallita: ' + e.message);
+  }
+}
+
+// Kick off the Microsoft OAuth flow (mirrors connectGoogle).
+export async function connectMicrosoft() {
+  if (!getCurrentUser()) {
+    alert('Accedi prima con Google per connettere un calendario.');
+    return;
+  }
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(`${FN_OAUTH_MICROSOFT}?action=start`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ app_url: location.origin + location.pathname }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { url } = await res.json();
+    if (!url) throw new Error('No URL returned');
+    location.href = url;
+  } catch (e) {
+    console.error('[cal] connectMicrosoft failed:', e);
     alert('Connessione fallita: ' + e.message);
   }
 }
@@ -751,8 +794,12 @@ function renderEmptyState() {
           : 'Accedi prima con Google sul drawer in alto a destra, poi connetti il tuo calendario.'}</div>
         ${signedIn ? `
           <button class="cal-empty-cta" data-cal-connect="google">
-            ${svg.google || ''}
+            ${svg.google}
             <span>Connetti Google Calendar</span>
+          </button>
+          <button class="cal-empty-cta cal-empty-cta-ms" data-cal-connect="microsoft">
+            ${svg.outlook}
+            <span>Connetti Outlook / Office 365</span>
           </button>
         ` : ''}
       </div>
@@ -762,16 +809,52 @@ function renderEmptyState() {
 
 function renderConnectionChips() {
   if (!calState.connections.length) return '';
+  const chips = calState.connections.map(c => `
+    <span class="cal-conn-chip" title="${escape(c.account_email)}">
+      <span class="cal-conn-provider">${c.provider === 'microsoft' ? svg.outlook : svg.google}</span>
+      <span class="cal-conn-dot" style="background:${escape(c.display_color || '#1A6B5A')}"></span>
+      <span class="cal-conn-email">${escape(c.account_email)}</span>
+    </span>
+  `).join('');
   return `
     <div class="cal-conns">
-      ${calState.connections.map(c => `
-        <span class="cal-conn-chip" title="${escape(c.account_email)}">
-          <span class="cal-conn-dot" style="background:${escape(c.display_color || '#1A6B5A')}"></span>
-          <span class="cal-conn-email">${escape(c.account_email)}</span>
-        </span>
-      `).join('')}
+      ${chips}
+      <button class="cal-conn-add" data-cal-add-account title="Aggiungi account">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
     </div>
   `;
+}
+
+// Mini popover for "+ aggiungi account" pill
+function showAddAccountMenu(anchor) {
+  document.querySelector('.cal-add-menu')?.remove();
+  const menu = document.createElement('div');
+  menu.className = 'cal-add-menu';
+  menu.innerHTML = `
+    <button class="cal-add-menu-item" data-cal-connect="google">
+      ${svg.google}<span>Google Calendar</span>
+    </button>
+    <button class="cal-add-menu-item" data-cal-connect="microsoft">
+      ${svg.outlook}<span>Outlook / Office 365</span>
+    </button>
+  `;
+  document.body.appendChild(menu);
+  const rect = anchor.getBoundingClientRect();
+  let left = rect.left, top = rect.bottom + 6;
+  if (left + 220 > window.innerWidth - 8) left = window.innerWidth - 228;
+  menu.style.left = left + 'px';
+  menu.style.top  = top + 'px';
+  menu.querySelectorAll('[data-cal-connect]').forEach(b => {
+    b.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      menu.remove();
+      if (b.dataset.calConnect === 'microsoft') connectMicrosoft();
+      else connectGoogle();
+    });
+  });
+  const close = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); } };
+  setTimeout(() => document.addEventListener('click', close), 0);
 }
 
 function renderCalendar() {
@@ -803,7 +886,15 @@ function renderCalendar() {
     if (_onLeave) _onLeave();
   });
   root.querySelectorAll('[data-cal-connect]').forEach(b => {
-    b.addEventListener('click', () => connectGoogle());
+    b.addEventListener('click', () => {
+      if (b.dataset.calConnect === 'microsoft') connectMicrosoft();
+      else connectGoogle();
+    });
+  });
+  // "+ aggiungi account" pill — shows a mini picker (Google vs Microsoft)
+  root.querySelector('[data-cal-add-account]')?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    showAddAccountMenu(ev.currentTarget);
   });
   root.querySelectorAll('.cal-event, .cal-mevent').forEach(el => {
     el.addEventListener('click', (ev) => {

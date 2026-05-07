@@ -875,8 +875,25 @@ body.cal-mode .board-pill{display:none !important;}
   padding:4px 10px;border-radius:999px;
   background:color-mix(in srgb,var(--text) 4%,transparent);
   font:500 11px 'DM Sans';color:var(--muted);}
+.cal-conn-provider{display:flex;align-items:center;opacity:.8;}
 .cal-conn-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .cal-conn-email{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* "+ aggiungi account" pill */
+.cal-conn-add{display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:24px;border:1.5px dashed var(--border);border-radius:50%;
+  background:transparent;cursor:pointer;color:var(--muted);
+  transition:border-color .15s,color .15s;}
+.cal-conn-add:hover{border-color:var(--primary);color:var(--primary);}
+/* Add-account mini menu */
+.cal-add-menu{position:fixed;z-index:9999;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;box-shadow:var(--shadow);
+  min-width:210px;overflow:hidden;padding:4px;}
+.cal-add-menu-item{display:flex;align-items:center;gap:10px;
+  width:100%;padding:9px 12px;border:none;background:transparent;
+  font:500 13px 'DM Sans';color:var(--text);cursor:pointer;
+  border-radius:7px;transition:background .12s;}
+.cal-add-menu-item:hover{background:color-mix(in srgb,var(--primary) 8%,transparent);}
 
 /* Empty state when no calendar connected yet */
 .cal-empty{display:grid;place-items:center;padding:60px 20px;min-height:60vh;}
@@ -897,6 +914,12 @@ body.cal-mode .board-pill{display:none !important;}
   transition:filter .15s,transform .12s;}
 .cal-empty-cta:hover{filter:brightness(1.07);}
 .cal-empty-cta:active{transform:scale(.98);}
+/* Microsoft button — outlined style to visually differentiate */
+.cal-empty-cta-ms{background:transparent;color:#0078D4;
+  border:1.5px solid #0078D4;margin-top:8px;}
+.cal-empty-cta-ms:hover{background:rgba(0,120,212,.07);filter:none;}
+.cal-empty { flex-direction:column; }
+.cal-empty-card{ display:flex;flex-direction:column;align-items:center; }
 
 /* Notes from calendar get a discreet calendar badge */
 .note.from-calendar::after{content:'📅';position:absolute;
@@ -963,7 +986,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.3.1.6</div>
+<div class="version">v.3.2.0</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
