@@ -103,14 +103,15 @@ function buildMockEvents() {
 // we know for certain the user has no real account connected (so we don't
 // flash "fake" events when a signed-in user opens the calendar).
 export const calState = {
-  events:      [],
-  view:        'week',
-  cursor:      new Date(),
-  active:      false,
-  connections: [],
-  loading:     false,
-  error:       null,
-  source:      'unknown',           // 'unknown' | 'mock' | 'real' | 'empty'
+  events:         [],
+  view:           'week',
+  cursor:         new Date(),
+  active:         false,
+  connections:    [],
+  loading:        false,
+  error:          null,
+  source:         'unknown',          // 'unknown' | 'mock' | 'real' | 'empty'
+  brokenAccounts: new Set(),          // emails with expired/revoked tokens
 };
 
 // Pick a colour for an event:
@@ -183,23 +184,23 @@ export async function loadEvents() {
     const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
 
     // Fire both providers in parallel; a failure in one doesn't block the other.
+    calState.brokenAccounts = new Set();
+
+    const fetchProvider = (url, label) =>
+      fetch(url, { method: 'POST', headers, body })
+        .then(r => r.ok ? r.json() : r.text().then(t => { throw new Error(t); }))
+        .then(j => {
+          // Mark accounts whose tokens are expired/revoked so the UI can warn.
+          (j.accounts || []).forEach(a => {
+            if (a.error) calState.brokenAccounts.add(a.email);
+          });
+          return j.events || [];
+        })
+        .catch(e => { console.warn(`[cal] ${label} events failed:`, e.message); return []; });
+
     const fetches = [];
-    if (googleConns.length > 0) {
-      fetches.push(
-        fetch(FN_EVENTS_GOOGLE, { method: 'POST', headers, body })
-          .then(r => r.ok ? r.json() : r.text().then(t => { throw new Error(t); }))
-          .then(j => j.events || [])
-          .catch(e => { console.warn('[cal] google events failed:', e.message); return []; }),
-      );
-    }
-    if (msConns.length > 0) {
-      fetches.push(
-        fetch(FN_EVENTS_MICROSOFT, { method: 'POST', headers, body })
-          .then(r => r.ok ? r.json() : r.text().then(t => { throw new Error(t); }))
-          .then(j => j.events || [])
-          .catch(e => { console.warn('[cal] microsoft events failed:', e.message); return []; }),
-      );
-    }
+    if (googleConns.length > 0) fetches.push(fetchProvider(FN_EVENTS_GOOGLE,    'google'));
+    if (msConns.length     > 0) fetches.push(fetchProvider(FN_EVENTS_MICROSOFT, 'microsoft'));
 
     const results = await Promise.all(fetches);
     const all = results.flat();
@@ -809,13 +810,25 @@ function renderEmptyState() {
 
 function renderConnectionChips() {
   if (!calState.connections.length) return '';
-  const chips = calState.connections.map(c => `
-    <span class="cal-conn-chip" title="${escape(c.account_email)}">
-      <span class="cal-conn-provider">${c.provider === 'microsoft' ? svg.outlook : svg.google}</span>
-      <span class="cal-conn-dot" style="background:${escape(c.display_color || '#1A6B5A')}"></span>
-      <span class="cal-conn-email">${escape(c.account_email)}</span>
-    </span>
-  `).join('');
+  const chips = calState.connections.map(c => {
+    const broken = calState.brokenAccounts.has(c.account_email);
+    return `
+      <span class="cal-conn-chip ${broken ? 'cal-conn-chip-broken' : ''}"
+            title="${broken ? 'Token scaduto — riconnetti l\'account' : escape(c.account_email)}">
+        <span class="cal-conn-provider">${c.provider === 'microsoft' ? svg.outlook : svg.google}</span>
+        <span class="cal-conn-dot" style="background:${broken ? '#e53e3e' : escape(c.display_color || '#1A6B5A')}"></span>
+        <span class="cal-conn-email">${escape(c.account_email)}</span>
+        ${broken ? `
+          <button class="cal-conn-reconnect"
+                  data-reconnect="${escape(c.provider)}"
+                  title="Riconnetti">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+            <span>Riconnetti</span>
+          </button>
+        ` : ''}
+      </span>
+    `;
+  }).join('');
   return `
     <div class="cal-conns">
       ${chips}
@@ -888,6 +901,14 @@ function renderCalendar() {
   root.querySelectorAll('[data-cal-connect]').forEach(b => {
     b.addEventListener('click', () => {
       if (b.dataset.calConnect === 'microsoft') connectMicrosoft();
+      else connectGoogle();
+    });
+  });
+  // Riconnetti buttons on broken-token chips
+  root.querySelectorAll('[data-reconnect]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (btn.dataset.reconnect === 'microsoft') connectMicrosoft();
       else connectGoogle();
     });
   });
