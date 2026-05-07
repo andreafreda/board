@@ -172,6 +172,12 @@ export async function loadEvents() {
     });
     if (!res.ok) throw new Error(await res.text());
     const json = await res.json();
+    // v3.1.3: surface diag so we can triage "no events" cases.
+    console.info('[cal] events response:', {
+      count: (json.events || []).length,
+      diag: json.diag,
+      accounts: json.accounts,
+    });
     calState.events = json.events || [];
     calState.source = 'real';
   } catch (e) {
