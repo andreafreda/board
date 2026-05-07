@@ -352,8 +352,7 @@ export function initCalendarMode() {
   // calendar HTML was added to the page (defensive — the element is in
   // the file but ES module evaluation order can race in some setups).
   const btn = dom.calendarModeBtn || document.getElementById('calendarModeBtn');
-  if (!btn) { console.warn('[v3] calendarModeBtn not found'); return; }
-  console.info('[v3] calendar wired');
+  if (!btn) return;
 
   // Lazy-load the calendar module on first toggle so guests / users who
   // never open the calendar don't pay its render cost.
