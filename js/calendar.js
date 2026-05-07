@@ -264,9 +264,12 @@ const svg = {
 
 // ── Core renderers ──────────────────────────────────────────────────
 
+// v3.1.1: extended to 06:00–24:00 so late-night recurring events
+// (e.g. a daily 22:00 sync) render with their full duration visible
+// instead of clipping at the bottom of the grid.
 const HOUR_PX = 56;
-const START_H = 7;
-const END_H   = 22;
+const START_H = 6;
+const END_H   = 23;
 
 function renderHeader() {
   const v = calState.view;
