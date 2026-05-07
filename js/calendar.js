@@ -99,16 +99,18 @@ function buildMockEvents() {
 }
 
 // Calendar-only state (kept separate from board state)
+// Initial events array is empty — mocks are only used as a fallback when
+// we know for certain the user has no real account connected (so we don't
+// flash "fake" events when a signed-in user opens the calendar).
 export const calState = {
-  events:      buildMockEvents(),
-  view:        'week',              // 'day' | 'week' | 'month'
+  events:      [],
+  view:        'week',
   cursor:      new Date(),
-  active:      false,               // calendar mode on/off
-  // v3.1: real provider data (set after loadConnections / loadEvents)
-  connections: [],                  // [{ id, account_email, display_color, enabled }]
+  active:      false,
+  connections: [],
   loading:     false,
   error:       null,
-  source:      'mock',              // 'mock' | 'real' | 'empty'
+  source:      'unknown',           // 'unknown' | 'mock' | 'real' | 'empty'
 };
 
 // Pick a colour for an event:
@@ -147,9 +149,16 @@ export async function loadConnections() {
 }
 
 export async function loadEvents() {
-  if (!getCurrentUser() || calState.connections.length === 0) {
-    // No real accounts → keep the mocks so the calendar looks alive
-    calState.source = calState.connections.length === 0 ? 'empty' : 'mock';
+  if (!getCurrentUser()) {
+    // Logged-out users get the mock preview so the empty calendar
+    // looks alive instead of completely blank
+    calState.events = buildMockEvents();
+    calState.source = 'mock';
+    return;
+  }
+  if (calState.connections.length === 0) {
+    calState.events = [];
+    calState.source = 'empty';
     return;
   }
   calState.loading = true;
