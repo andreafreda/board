@@ -264,11 +264,10 @@ const svg = {
 
 // ── Core renderers ──────────────────────────────────────────────────
 
-// v3.1.1: extended to 06:00–24:00 so late-night recurring events
-// (e.g. a daily 22:00 sync) render with their full duration visible
-// instead of clipping at the bottom of the grid.
+// v3.1.2: full 24-hour grid (00:00 → 23:00 labels, fits events anywhere).
+// The body scrolls vertically so the user lands on "now" at open time.
 const HOUR_PX = 56;
-const START_H = 6;
+const START_H = 0;
 const END_H   = 23;
 
 function renderHeader() {
