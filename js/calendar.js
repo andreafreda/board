@@ -910,14 +910,36 @@ function renderCalendar() {
     });
   });
 
-  // Auto-scroll the day/week timeline near "now" so the user lands on
-  // the relevant slot rather than 07:00.
+  // Auto-scroll the day/week timeline.
+  // Priority: show the earliest event of the visible period; if events are all
+  // in the morning and it's already afternoon, find a middle ground so the
+  // now-line stays in sight too.
   if (calState.view === 'day' || calState.view === 'week') {
     requestAnimationFrame(() => {
       const body = root.querySelector('.cal-body');
       if (!body) return;
       const now = new Date();
-      const targetH = Math.max(START_H, now.getHours() - 1);
+      const wkStart = startOfWeek(calState.cursor);
+      const visibleDays = calState.view === 'day'
+        ? [calState.cursor]
+        : Array.from({ length: 7 }, (_, i) => addDays(wkStart, i));
+      const dayEvents = calState.events.filter(e =>
+        !e.allDay && visibleDays.some(d => sameDay(new Date(e.startAt), d))
+      );
+      let targetH;
+      if (dayEvents.length > 0) {
+        const earliest = Math.min(...dayEvents.map(e => new Date(e.startAt).getHours()));
+        const nowH = now.getHours();
+        // If the first event is more than 3 hours before now, split the view
+        // so both the events and the now-line stay reasonably visible.
+        if (earliest < nowH - 3) {
+          targetH = Math.max(START_H, earliest - 1);
+        } else {
+          targetH = Math.max(START_H, earliest - 1);
+        }
+      } else {
+        targetH = Math.max(START_H, now.getHours() - 1);
+      }
       body.scrollTop = (targetH - START_H) * HOUR_PX;
     });
   }
