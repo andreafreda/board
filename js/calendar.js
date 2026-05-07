@@ -1,23 +1,20 @@
 // ════════════════════════════════════════════════════════════════════
-//   calendar.js — v3.0.0 calendar view (Day / Week / Month)
+//   calendar.js — v3 calendar view (Day / Week / Month)
 // ════════════════════════════════════════════════════════════════════
 // The calendar is a sister view to the board — it lives in its own
 // container (#calendarView) that hides the canvas when active.
 //
-// This module owns:
-//   • mock event data (until Edge Functions land for Google / Microsoft)
-//   • the three view renderers (day / week / month)
-//   • the event detail popover and "Invia a board" flow
-//   • the connected-accounts model surfaced in the drawer
-//
-// Calendar account → event flow today is mocked; the data shape mirrors
-// the real CalendarEvent object so swapping in real provider data later
-// is a one-file change.
+// As of v3.1 events come from real Google Calendar accounts via the
+// calendar-events-google Edge Function. When the user isn't signed in
+// (or hasn't connected any account yet) we fall back to the mock data
+// so the empty calendar still looks alive.
 
 import { dom } from './dom.js';
 import { state, save, uid, NOTE_COLOR_MAP } from './state.js';
 import { renderNotes } from './notes.js';
 import { broadcastNoteUpsert } from './realtime.js';
+import { getClient } from './db.js';
+import { getCurrentUser } from './auth.js';
 
 // ── Mock data — replace with Edge Function calls in v3.1+ ──────────
 // Account colors keep separation from the post-it palette so the user
@@ -103,13 +100,127 @@ function buildMockEvents() {
 
 // Calendar-only state (kept separate from board state)
 export const calState = {
-  events:   buildMockEvents(),
-  view:     'week',                 // 'day' | 'week' | 'month'
-  cursor:   new Date(),             // currently-displayed reference date
-  active:   false,                  // calendar mode on/off
+  events:      buildMockEvents(),
+  view:        'week',              // 'day' | 'week' | 'month'
+  cursor:      new Date(),
+  active:      false,               // calendar mode on/off
+  // v3.1: real provider data (set after loadConnections / loadEvents)
+  connections: [],                  // [{ id, account_email, display_color, enabled }]
+  loading:     false,
+  error:       null,
+  source:      'mock',              // 'mock' | 'real' | 'empty'
 };
 
-const accountColor = (id) => (ACCOUNTS.find(a => a.id === id) || {}).color || '#1A6B5A';
+// Pick a colour for an event:
+//   • real events carry calendarColor in the payload
+//   • mock events use ACCOUNT_COLORS[account]
+const accountColor = (e) => {
+  if (e.calendarColor) return e.calendarColor;
+  if (e.account)       return (ACCOUNTS.find(a => a.id === e.account) || {}).color || '#1A6B5A';
+  return '#1A6B5A';
+};
+
+// ── Real provider data via Edge Functions ──────────────────────────
+const SUPABASE_URL    = 'https://qphyrsdtegxvnwaqixeb.supabase.co';
+const FN_OAUTH_GOOGLE = `${SUPABASE_URL}/functions/v1/calendar-oauth-google`;
+const FN_EVENTS_GOOGLE = `${SUPABASE_URL}/functions/v1/calendar-events-google`;
+
+async function getAccessToken() {
+  const client = await getClient();
+  const { data: { session } } = await client.auth.getSession();
+  return session?.access_token || null;
+}
+
+export async function loadConnections() {
+  if (!getCurrentUser()) { calState.connections = []; return; }
+  try {
+    const client = await getClient();
+    const { data, error } = await client.from('calendar_connections')
+      .select('id, provider, account_email, display_color, enabled, token_expiry')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    calState.connections = data || [];
+  } catch (e) {
+    console.warn('[cal] loadConnections failed:', e.message);
+    calState.connections = [];
+  }
+}
+
+export async function loadEvents() {
+  if (!getCurrentUser() || calState.connections.length === 0) {
+    // No real accounts → keep the mocks so the calendar looks alive
+    calState.source = calState.connections.length === 0 ? 'empty' : 'mock';
+    return;
+  }
+  calState.loading = true;
+  calState.error   = null;
+  try {
+    const token = await getAccessToken();
+    if (!token) throw new Error('not signed in');
+    // Fetch a 4-week window centred on the current cursor so navigation
+    // back/forward stays inside the cache for a while.
+    const c = calState.cursor;
+    const min = new Date(c); min.setDate(min.getDate() - 21); min.setHours(0,0,0,0);
+    const max = new Date(c); max.setDate(max.getDate() + 21); max.setHours(23,59,59,999);
+    const res = await fetch(FN_EVENTS_GOOGLE, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ time_min: min.toISOString(), time_max: max.toISOString() }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const json = await res.json();
+    calState.events = json.events || [];
+    calState.source = 'real';
+  } catch (e) {
+    console.warn('[cal] loadEvents failed:', e.message);
+    calState.error = e.message;
+    calState.source = 'real';
+  } finally {
+    calState.loading = false;
+  }
+}
+
+// Kick off the OAuth flow — POST to the Edge Function with the user's JWT,
+// receive the consent URL, then full-page-redirect there.
+export async function connectGoogle() {
+  if (!getCurrentUser()) {
+    alert('Accedi prima con Google per connettere un calendario.');
+    return;
+  }
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(`${FN_OAUTH_GOOGLE}?action=start`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ app_url: location.origin + location.pathname }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { url } = await res.json();
+    if (!url) throw new Error('No URL returned');
+    location.href = url;
+  } catch (e) {
+    console.error('[cal] connectGoogle failed:', e);
+    alert('Connessione fallita: ' + e.message);
+  }
+}
+
+export async function disconnectAccount(connectionId) {
+  try {
+    const client = await getClient();
+    await client.from('calendar_connections').delete().eq('id', connectionId);
+    await loadConnections();
+    await loadEvents();
+    if (calState.active) renderCalendar();
+  } catch (e) {
+    console.warn('[cal] disconnect failed:', e.message);
+  }
+}
 
 // ── Date helpers ────────────────────────────────────────────────────
 const startOfWeek = (d) => {
@@ -292,7 +403,7 @@ function renderMonth() {
         </div>
         ${visible.map(e => `
           <div class="cal-mevent" data-event-id="${e.id}"
-               style="--c:${accountColor(e.account)}">
+               style="--c:${accountColor(e)}">
             <span class="cal-mevent-time">${fmtTime(e.startAt)}</span>
             <span class="cal-mevent-title">${escape(e.title)}</span>
           </div>
@@ -328,7 +439,7 @@ function renderEventBlock(e) {
   return `
     <div class="cal-event ${e.onBoard ? 'cal-event-onboard' : ''}"
          data-event-id="${e.id}"
-         style="--c:${accountColor(e.account)};top:${top}px;height:${height}px">
+         style="--c:${accountColor(e)};top:${top}px;height:${height}px">
       <div class="cal-event-title">${escape(e.title)}${e.onBoard ? '<span class="cal-event-badge">SU BOARD</span>' : ''}</div>
       ${height > 32 ? `<div class="cal-event-meta">${fmtTime(e.startAt)}${e.location && height > 48 ? ' · ' + escape(e.location) : ''}</div>` : ''}
     </div>
@@ -350,7 +461,10 @@ function openEventPopover(eventId, anchorEl) {
   if (!e) return;
 
   const start = new Date(e.startAt);
-  const acct  = ACCOUNTS.find(a => a.id === e.account);
+  // Real events carry accountEmail; mock events carry account.
+  const sourceLabel = e.accountEmail
+    || ACCOUNTS.find(a => a.id === e.account)?.email
+    || '';
   const dateLabel = `${DAY_NAMES_LONG[(start.getDay() + 6) % 7]} ${start.getDate()} ${MONTH_NAMES[start.getMonth()].toLowerCase()}`;
   const timeLabel = `${fmtTime(e.startAt)} – ${fmtTime(e.endAt)} · ${eventMins(e)} min`;
 
@@ -358,8 +472,8 @@ function openEventPopover(eventId, anchorEl) {
   pop.className = 'cal-pop';
   pop.innerHTML = `
     <div class="cal-pop-head">
-      <span class="cal-pop-source-dot" style="background:${accountColor(e.account)}"></span>
-      <span class="cal-pop-source">${acct ? escape(acct.email) : ''}</span>
+      <span class="cal-pop-source-dot" style="background:${accountColor(e)}"></span>
+      <span class="cal-pop-source">${escape(sourceLabel)}</span>
       <button class="cal-pop-close" aria-label="Chiudi">${svg.close}</button>
     </div>
     <div class="cal-pop-title">${escape(e.title)}</div>
@@ -548,26 +662,80 @@ function showToast(msg, kind = 'ok') {
 }
 
 // ── Active state + main render ─────────────────────────────────────
-export function setActive(on) {
+export async function setActive(on) {
   calState.active = on;
   document.body.classList.toggle('cal-mode', on);
-  if (on) renderCalendar();
   closeEventPopover();
+  if (!on) return;
+  // Render immediately with whatever we have (mock or last fetch),
+  // then fetch fresh if the user has connected accounts.
+  renderCalendar();
+  if (getCurrentUser()) {
+    await loadConnections();
+    await loadEvents();
+    if (calState.active) renderCalendar();
+  }
 }
 
 export function isActive() { return calState.active; }
 
+function renderEmptyState() {
+  const signedIn = !!getCurrentUser();
+  return `
+    <div class="cal-empty">
+      <div class="cal-empty-card">
+        <div class="cal-empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1A6B5A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <div class="cal-empty-title">Connetti il tuo calendario</div>
+        <div class="cal-empty-sub">${signedIn
+          ? 'Vedi tutti i tuoi appuntamenti qui e portali sulla board con un click.'
+          : 'Accedi prima con Google sul drawer in alto a destra, poi connetti il tuo calendario.'}</div>
+        ${signedIn ? `
+          <button class="cal-empty-cta" data-cal-connect="google">
+            ${svg.google || ''}
+            <span>Connetti Google Calendar</span>
+          </button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderConnectionChips() {
+  if (!calState.connections.length) return '';
+  return `
+    <div class="cal-conns">
+      ${calState.connections.map(c => `
+        <span class="cal-conn-chip" title="${escape(c.account_email)}">
+          <span class="cal-conn-dot" style="background:${escape(c.display_color || '#1A6B5A')}"></span>
+          <span class="cal-conn-email">${escape(c.account_email)}</span>
+        </span>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderCalendar() {
   const root = dom.calendarView;
   if (!root) return;
+  const showEmpty = (calState.source === 'empty' || (calState.events.length === 0 && getCurrentUser() && calState.connections.length === 0));
   root.innerHTML = `
     <div class="cal-header">
       ${renderHeader()}
     </div>
+    ${renderConnectionChips()}
     <div class="cal-body cal-body-${calState.view}">
-      ${calState.view === 'day'   ? renderDay()   : ''}
-      ${calState.view === 'week'  ? renderWeek()  : ''}
-      ${calState.view === 'month' ? renderMonth() : ''}
+      ${showEmpty ? renderEmptyState() : (
+        calState.view === 'day'   ? renderDay()   :
+        calState.view === 'week'  ? renderWeek()  :
+        calState.view === 'month' ? renderMonth() : ''
+      )}
     </div>
   `;
 
@@ -580,6 +748,9 @@ function renderCalendar() {
   });
   root.querySelector('[data-cal-back]')?.addEventListener('click', () => {
     if (_onLeave) _onLeave();
+  });
+  root.querySelectorAll('[data-cal-connect]').forEach(b => {
+    b.addEventListener('click', () => connectGoogle());
   });
   root.querySelectorAll('.cal-event, .cal-mevent').forEach(el => {
     el.addEventListener('click', (ev) => {

@@ -76,6 +76,30 @@ initialRender();
 (async () => {
   const urlBoard = new URLSearchParams(location.search).get('board');
 
+  // v3.1: handle return from Google Calendar OAuth ─────────────────
+  const calConnected = new URLSearchParams(location.search).get('cal_connected');
+  const calEmail     = new URLSearchParams(location.search).get('cal_email');
+  if (calConnected) {
+    // Strip the params from the URL so a refresh doesn't keep firing this
+    const sp = new URLSearchParams(location.search);
+    sp.delete('cal_connected'); sp.delete('cal_email');
+    const q = sp.toString();
+    history.replaceState({}, '', location.pathname + (q ? '?' + q : ''));
+    // Re-enter calendar mode so the user lands directly on it
+    setTimeout(async () => {
+      try {
+        const cal = await import('./calendar.js');
+        const modes = await import('./modes.js');
+        // setActive will load fresh connections + events
+        const btn = document.getElementById('calendarModeBtn');
+        if (btn && !btn.classList.contains('on')) btn.click();
+        await cal.loadConnections();
+        await cal.loadEvents();
+        if (calEmail) console.info('[v3] Connected:', calEmail);
+      } catch (e) { console.warn('[v3] post-connect refresh failed:', e); }
+    }, 600);
+  }
+
   // Always run the auth flow so Supabase boards replace any stale
   // localStorage data and the share-link case can decide ownership.
   try {

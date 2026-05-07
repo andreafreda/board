@@ -855,6 +855,36 @@ body.cal-mode .board-pill{display:none !important;}
 .mp-btn.cal-toggle.on{background:color-mix(in srgb,var(--primary) 16%,transparent);
   color:var(--primary);}
 
+/* Connection chips strip — under the header, above the body */
+.cal-conns{display:flex;gap:8px;flex-wrap:wrap;
+  padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);}
+.cal-conn-chip{display:inline-flex;align-items:center;gap:6px;
+  padding:4px 10px;border-radius:999px;
+  background:color-mix(in srgb,var(--text) 4%,transparent);
+  font:500 11px 'DM Sans';color:var(--muted);}
+.cal-conn-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.cal-conn-email{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Empty state when no calendar connected yet */
+.cal-empty{display:grid;place-items:center;padding:60px 20px;min-height:60vh;}
+.cal-empty-card{max-width:420px;text-align:center;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:36px 28px;
+  box-shadow:0 4px 16px rgba(26,23,20,.06);}
+.cal-empty-icon{width:64px;height:64px;border-radius:14px;
+  background:color-mix(in srgb,var(--primary) 10%,transparent);
+  display:grid;place-items:center;margin:0 auto 18px;}
+.cal-empty-title{font:600 17px 'DM Sans';color:var(--text);margin-bottom:6px;}
+.cal-empty-sub{font:400 13px 'DM Sans';color:var(--muted);
+  line-height:1.5;margin-bottom:22px;}
+.cal-empty-cta{display:inline-flex;align-items:center;gap:8px;
+  padding:11px 18px;border:none;border-radius:10px;
+  background:var(--primary);color:#fff;
+  font:600 13px 'DM Sans';cursor:pointer;
+  transition:filter .15s,transform .12s;}
+.cal-empty-cta:hover{filter:brightness(1.07);}
+.cal-empty-cta:active{transform:scale(.98);}
+
 /* Notes from calendar get a discreet calendar badge */
 .note.from-calendar::after{content:'📅';position:absolute;
   top:6px;right:6px;font-size:11px;opacity:.55;
@@ -920,7 +950,7 @@ if (new URLSearchParams(location.search).get('board')) {
   <div class="tl" id="timeLine">--:--</div>
   <div class="dl" id="dateLine"></div>
 </div>
-<div class="version">v.3.0.0</div>
+<div class="version">v.3.1.0</div>
 
 <!-- Board pill: top-left, contains the saved-status dot inline as a child
      so it always hugs the pill regardless of board-name length. -->
