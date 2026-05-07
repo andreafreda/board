@@ -328,14 +328,40 @@ function renderHeader() {
 let _onLeave = null;
 export function setOnLeave(fn) { _onLeave = fn; }
 
+function renderAllDayPill(e) {
+  const isTask = e.kind === 'task';
+  const isBday = e.kind === 'birthday';
+  const icon = isTask ? '✓' : (isBday ? '🎂' : '');
+  return `
+    <div class="cal-allday-pill ${isTask ? 'is-task' : ''} ${isBday ? 'is-bday' : ''} ${e.completed ? 'done' : ''}"
+         data-event-id="${e.id}"
+         style="--c:${accountColor(e)}">
+      ${icon ? `<span class="cal-allday-icon">${icon}</span>` : ''}
+      <span class="cal-allday-title">${escape(e.title)}</span>
+    </div>
+  `;
+}
+
+function splitDayEvents(c) {
+  const all = calState.events.filter(e => sameDay(new Date(e.startAt), c));
+  return {
+    allDay: all.filter(e => e.allDay).sort((a, b) => (a.kind || '').localeCompare(b.kind || '')),
+    timed:  all.filter(e => !e.allDay).sort((a, b) => new Date(a.startAt) - new Date(b.startAt)),
+  };
+}
+
 function renderDay() {
   const c = calState.cursor;
-  const todayEvents = calState.events
-    .filter(e => sameDay(new Date(e.startAt), c))
-    .sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
+  const { allDay, timed } = splitDayEvents(c);
   const isToday = sameDay(c, new Date());
 
   return `
+    ${allDay.length ? `
+      <div class="cal-allday-strip cal-allday-strip-day">
+        <div class="cal-allday-strip-label">Tutto il giorno</div>
+        <div class="cal-allday-strip-list">${allDay.map(renderAllDayPill).join('')}</div>
+      </div>
+    ` : ''}
     <div class="cal-grid cal-grid-day">
       <div class="cal-time-col">
         ${Array.from({ length: END_H - START_H + 1 }, (_, i) => `
@@ -347,7 +373,7 @@ function renderDay() {
       <div class="cal-day-col" data-day="0">
         ${Array.from({ length: END_H - START_H + 1 }, () => '<div class="cal-time-slot"></div>').join('')}
         ${isToday ? renderNowLine() : ''}
-        ${todayEvents.map(renderEventBlock).join('')}
+        ${timed.map(renderEventBlock).join('')}
       </div>
     </div>
   `;
@@ -365,13 +391,25 @@ function renderWeek() {
     </div>
   `).join('');
 
+  // Per-day split into all-day vs timed
+  const splits = days.map(d => splitDayEvents(d));
+  const hasAnyAllDay = splits.some(s => s.allDay.length > 0);
+
+  const allDayRow = hasAnyAllDay ? `
+    <div class="cal-allday-strip cal-allday-strip-week">
+      <div class="cal-allday-strip-label">Tutto il giorno</div>
+      ${splits.map(s => `
+        <div class="cal-allday-cell">${s.allDay.map(renderAllDayPill).join('')}</div>
+      `).join('')}
+    </div>
+  ` : '';
+
   const cols = days.map((d, i) => {
-    const dayEv = calState.events.filter(e => sameDay(new Date(e.startAt), d));
     return `
       <div class="cal-day-col" data-day="${i}">
         ${Array.from({ length: END_H - START_H + 1 }, () => '<div class="cal-time-slot"></div>').join('')}
         ${sameDay(d, today) ? renderNowLine() : ''}
-        ${dayEv.map(renderEventBlock).join('')}
+        ${splits[i].timed.map(renderEventBlock).join('')}
       </div>
     `;
   }).join('');
@@ -381,6 +419,7 @@ function renderWeek() {
       <div class="cal-time-col-head"></div>
       ${headers}
     </div>
+    ${allDayRow}
     <div class="cal-grid cal-grid-week">
       <div class="cal-time-col">
         ${Array.from({ length: END_H - START_H + 1 }, (_, i) => `
@@ -769,7 +808,7 @@ function renderCalendar() {
   root.querySelectorAll('[data-cal-connect]').forEach(b => {
     b.addEventListener('click', () => connectGoogle());
   });
-  root.querySelectorAll('.cal-event, .cal-mevent').forEach(el => {
+  root.querySelectorAll('.cal-event, .cal-mevent, .cal-allday-pill').forEach(el => {
     el.addEventListener('click', (ev) => {
       ev.stopPropagation();
       openEventPopover(el.dataset.eventId, el);
