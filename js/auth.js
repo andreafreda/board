@@ -113,18 +113,22 @@ export async function renderAuth(session) {
   if (isViewMode()) return;
 
   if (session?.user) {
-    // v3.2.7: if we're running inside the OAuth popup opened by the HA iframe,
-    // close ourselves — Supabase's localStorage sync will fire onAuthStateChange
-    // in the iframe automatically (no manual postMessage needed).
+    // v3.2.8: if we're running inside the OAuth popup opened by the HA iframe,
+    // send the session back via postMessage (bypasses Chrome's third-party
+    // storage partitioning that prevents localStorage sync across contexts),
+    // then close the popup. The iframe listener calls setSession() directly.
     if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.postMessage({
+          type:         '__board_oauth',
+          accessToken:  session.access_token,
+          refreshToken: session.refresh_token,
+        }, 'https://andreafreda.github.io');
+      } catch (e) { console.warn('[auth] postMessage failed:', e); }
+      // Small delay so postMessage is delivered before the window closes
+      await new Promise(r => setTimeout(r, 200));
       try { window.close(); } catch {}
-      // window.close() is async in some browsers; give it a moment then bail.
-      await new Promise(r => setTimeout(r, 300));
-      if (!window.closed) {
-        // Couldn't close (e.g. browser policy) — just load normally.
-      } else {
-        return;
-      }
+      return;
     }
 
     // v3.2.6: fallback — if popup was blocked and top-frame redirect was used,
@@ -262,6 +266,27 @@ export function initAuth() {
       }
     }
   } catch {}
+
+  // v3.2.8: receive the session posted back from the OAuth popup.
+  // Chrome partitions localStorage per (origin × top-level-origin), so the
+  // popup (top-level andreafreda.github.io) and the HA iframe (embedded in
+  // ha.andreafreda.cloud) have separate storage — Supabase's built-in
+  // cross-tab sync never fires across them. postMessage bypasses this.
+  window.addEventListener('message', async (e) => {
+    if (e.origin !== 'https://andreafreda.github.io') return;
+    if (e.data?.type !== '__board_oauth') return;
+    try {
+      const client = await getClient();
+      const { error } = await client.auth.setSession({
+        access_token:  e.data.accessToken,
+        refresh_token: e.data.refreshToken,
+      });
+      if (error) console.warn('[auth] setSession error:', error);
+      // onAuthStateChange fires automatically → renderAuth(session) → board loads
+    } catch (err) {
+      console.warn('[auth] popup session injection failed:', err);
+    }
+  });
 
   // Wire state.save() so it can schedule a cloud save when logged in
   setSaveHook({ getCurrentUser, scheduleSbSave });
