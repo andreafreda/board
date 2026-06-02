@@ -113,6 +113,26 @@ export async function renderAuth(session) {
   if (isViewMode()) return;
 
   if (session?.user) {
+    // v3.2.6: after OAuth from HA iframe the browser lands on the standalone
+    // board. If a ?return= URL was configured (saved to localStorage when the
+    // iframe first loaded), redirect back to HA now so the user isn't stranded.
+    // Only redirect from a standalone (top-level) context so we don't redirect
+    // inside a freshly-reloaded iframe that already has the session.
+    if (window.self === window.top) {
+      const raw = localStorage.getItem('__board_ha_return');
+      if (raw) {
+        try {
+          const { url, t } = JSON.parse(raw);
+          // Honour only if saved within the last 30 minutes
+          if (typeof url === 'string' && Date.now() - t < 30 * 60 * 1000) {
+            localStorage.removeItem('__board_ha_return');
+            window.location.href = url;
+            return;
+          }
+        } catch {}
+        localStorage.removeItem('__board_ha_return');
+      }
+    }
     await loadCloudBoardsForUser(session);
   } else {
     restoreGuestBoardsFromLocalStorage();
@@ -217,6 +237,21 @@ function restoreGuestBoardsFromLocalStorage() {
 
 // ── Wire the OAuth popup + sign-out + state hooks ───────────────────
 export function initAuth() {
+  // v3.2.6: if the board is embedded in HA via an iframe URL like
+  //   https://andreafreda.github.io/board/?return=https://ha.example.com
+  // save that return URL to localStorage so that after OAuth (which lands
+  // the user on the standalone board) we can redirect them back to HA.
+  try {
+    const returnParam = new URLSearchParams(window.location.search).get('return');
+    if (returnParam) {
+      const parsed = new URL(returnParam);
+      // Safety: only store URLs that point to a different origin
+      if (parsed.origin !== window.location.origin) {
+        localStorage.setItem('__board_ha_return', JSON.stringify({ url: returnParam, t: Date.now() }));
+      }
+    }
+  } catch {}
+
   // Wire state.save() so it can schedule a cloud save when logged in
   setSaveHook({ getCurrentUser, scheduleSbSave });
 
