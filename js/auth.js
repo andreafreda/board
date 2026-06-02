@@ -113,17 +113,28 @@ export async function renderAuth(session) {
   if (isViewMode()) return;
 
   if (session?.user) {
-    // v3.2.6: after OAuth from HA iframe the browser lands on the standalone
-    // board. If a ?return= URL was configured (saved to localStorage when the
-    // iframe first loaded), redirect back to HA now so the user isn't stranded.
-    // Only redirect from a standalone (top-level) context so we don't redirect
-    // inside a freshly-reloaded iframe that already has the session.
+    // v3.2.7: if we're running inside the OAuth popup opened by the HA iframe,
+    // close ourselves — Supabase's localStorage sync will fire onAuthStateChange
+    // in the iframe automatically (no manual postMessage needed).
+    if (window.opener && !window.opener.closed) {
+      try { window.close(); } catch {}
+      // window.close() is async in some browsers; give it a moment then bail.
+      await new Promise(r => setTimeout(r, 300));
+      if (!window.closed) {
+        // Couldn't close (e.g. browser policy) — just load normally.
+      } else {
+        return;
+      }
+    }
+
+    // v3.2.6: fallback — if popup was blocked and top-frame redirect was used,
+    // the user lands on the standalone board. If a ?return= URL was saved to
+    // localStorage by the iframe, redirect back to HA.
     if (window.self === window.top) {
       const raw = localStorage.getItem('__board_ha_return');
       if (raw) {
         try {
           const { url, t } = JSON.parse(raw);
-          // Honour only if saved within the last 30 minutes
           if (typeof url === 'string' && Date.now() - t < 30 * 60 * 1000) {
             localStorage.removeItem('__board_ha_return');
             window.location.href = url;
@@ -279,38 +290,42 @@ export function initAuth() {
   });
 
   dom.googleBtn.addEventListener('click', async () => {
-    // v2.0.13: switch to a full-page redirect for OAuth (normal tab).
-    // v3.2.2:  when running inside an iframe (e.g. Home Assistant dashboard)
-    //          a full-page redirect is blocked by the host frame and Google
-    //          returns a 403 "That's an error" because the redirectTo URL is
-    //          the HA origin, which is not an authorised Supabase redirect URI.
-    //          Fix: detect iframe context and open the OAuth URL in a new tab
-    //          via skipBrowserRedirect:true.  After the user signs in, the new
-    //          tab redirects back to the canonical app URL; supabase-js on that
-    //          tab fires SIGNED_IN and Supabase's BroadcastChannel mechanism
-    //          automatically propagates the session to this iframe so
-    //          onAuthStateChange fires here too without any extra plumbing.
+    // v2.0.13: full-page redirect for standalone tab (original behaviour).
+    // v3.2.7:  iframe flow rewritten.
+    //
+    // Problem: Google blocks its OAuth consent page when loaded inside an
+    // iframe (returns 403). Every approach that navigates the iframe itself
+    // to Google fails.
+    //
+    // Solution: open a small popup window from the board iframe's OWN window
+    // object (not window.top) SYNCHRONOUSLY while the user-gesture budget is
+    // still active, then navigate it to the OAuth URL once we have it.
+    // After login the popup lands on the board app, detects window.opener,
+    // and calls window.close().  Supabase's localStorage-based cross-tab
+    // sync fires onAuthStateChange in the HA iframe automatically — HA never
+    // moves.
+    //
+    // Fallback chain if popup is blocked:
+    //   1. window.top.location.href (navigates all of HA — user comes back via ?return=)
+    //   2. window.location.href    (navigates the iframe — Google 403, last resort)
     dom.googleBtn.disabled = true;
     dom.googleBtn.innerHTML = '<span class="auth-spinner"></span>';
     try {
-      const client     = await getClient();
-      // Always use the canonical app origin as redirectTo, not the current
-      // iframe URL (which may be ha.example.com and not in the allowlist).
       const appOrigin  = 'https://andreafreda.github.io/board/';
       const redirectTo = appOrigin;
       const inIframe   = window.self !== window.top;
 
       if (inIframe) {
-        // Iframe flow (e.g. Home Assistant).
-        // Google blocks OAuth pages loaded inside iframes (returns 403), so we
-        // cannot navigate the iframe itself to the consent URL.
-        // Strategy: open a blank tab from the TOP frame's context synchronously
-        // while the user-gesture budget is still active, then navigate it to the
-        // OAuth URL once we have it.  Opening from window.top bypasses the iframe
-        // sandbox restrictions that silence window.open().
+        // ── Step 1: open popup SYNCHRONOUSLY (user gesture still active) ──
+        // Use window.open() on the iframe's own window — the iframe has no
+        // sandbox so this is allowed; the gesture budget is intact because we
+        // haven't awaited anything yet.
+        const POPUP_FEATURES = 'popup,width=520,height=620,left=200,top=100';
         let popup = null;
-        try { popup = (window.top || window).open('about:blank', '_blank'); } catch {}
+        try { popup = window.open('', '_blank', POPUP_FEATURES); } catch {}
 
+        // ── Step 2: get the OAuth URL (async, gesture budget no longer matters) ──
+        const client = await getClient();
         const { data, error } = await client.auth.signInWithOAuth({
           provider: 'google',
           options:  { redirectTo, skipBrowserRedirect: true },
@@ -319,17 +334,22 @@ export function initAuth() {
 
         if (data?.url) {
           if (popup && !popup.closed) {
+            // Happy path: popup is open, send it to Google OAuth.
             popup.location.href = data.url;
-          } else {
-            // popup was blocked — last resort: navigate the top frame
-            try {
-              window.top.location.href = data.url;
-              return;
-            } catch {
-              window.location.href = data.url;
-              return;
-            }
+            // Restore button — login completes in the popup, not here.
+            dom.googleBtn.disabled  = false;
+            dom.googleBtn.innerHTML = GOOGLE_SVG;
+            return;
           }
+          // Popup was blocked — fall back to navigating the top frame.
+          // If the card URL includes ?return=<ha-url> the board will
+          // redirect the user back to HA after login.
+          try {
+            window.top.location.href = data.url;
+          } catch {
+            window.location.href = data.url;
+          }
+          return;
         }
         dom.googleBtn.disabled  = false;
         dom.googleBtn.innerHTML = GOOGLE_SVG;
