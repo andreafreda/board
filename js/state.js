@@ -39,7 +39,13 @@ export const ERASER_MIN = 8, ERASER_MAX = 100;
 export const FONT_MIN = 10, FONT_MAX = 36;
 
 // ── Helpers ──────────────────────────────────────────────────────────
-export const uid    = () => crypto.randomUUID();
+export function uid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  // Fallback for cross-origin iframes on Chrome where randomUUID is restricted
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+  );
+}
 export const clone  = (o) => JSON.parse(JSON.stringify(o));
 export const fmtTime = () => new Date().toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
 export const fmtDate = () => new Date().toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'short' });
