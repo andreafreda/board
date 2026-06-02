@@ -266,20 +266,36 @@ export function initAuth() {
       const inIframe   = window.self !== window.top;
 
       if (inIframe) {
-        // Iframe flow (e.g. Home Assistant): window.open() is silently blocked
-        // by the iframe sandbox so we navigate the iframe itself to the OAuth URL.
-        // Google → redirectTo (andreafreda.github.io/board) → supabase-js stores
-        // session in localStorage → iframe reloads the app already signed in.
+        // Iframe flow (e.g. Home Assistant).
+        // Google blocks OAuth pages loaded inside iframes (returns 403), so we
+        // cannot navigate the iframe itself to the consent URL.
+        // Strategy: open a blank tab from the TOP frame's context synchronously
+        // while the user-gesture budget is still active, then navigate it to the
+        // OAuth URL once we have it.  Opening from window.top bypasses the iframe
+        // sandbox restrictions that silence window.open().
+        let popup = null;
+        try { popup = (window.top || window).open('about:blank', '_blank'); } catch {}
+
         const { data, error } = await client.auth.signInWithOAuth({
           provider: 'google',
           options:  { redirectTo, skipBrowserRedirect: true },
         });
         if (error) throw error;
+
         if (data?.url) {
-          window.location.href = data.url;
-          return; // navigation in progress — no need to restore button
+          if (popup && !popup.closed) {
+            popup.location.href = data.url;
+          } else {
+            // popup was blocked — last resort: navigate the top frame
+            try {
+              window.top.location.href = data.url;
+              return;
+            } catch {
+              window.location.href = data.url;
+              return;
+            }
+          }
         }
-        // fallback: URL not returned, restore button
         dom.googleBtn.disabled  = false;
         dom.googleBtn.innerHTML = GOOGLE_SVG;
       } else {
