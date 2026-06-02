@@ -244,36 +244,54 @@ export function initAuth() {
   });
 
   dom.googleBtn.addEventListener('click', async () => {
-    // v2.0.13: switch to a full-page redirect for OAuth.
-    // The previous popup flow broke under several conditions:
-    //   - Chrome's Cross-Origin-Opener-Policy fragmented popup<->opener
-    //     comms, so onAuthStateChange sometimes never fired.
-    //   - Mobile browsers either silently blocked window.open or opened
-    //     a tab the user couldn't return from.
-    //   - The two awaits before window.open() consumed the user-gesture
-    //     budget on stricter browsers, blocking the popup.
-    // signInWithOAuth without skipBrowserRedirect performs a top-level
-    // navigation to Google, then back to our redirect URL with the
-    // session in the URL fragment — supabase-js detects it on the next
-    // page load and we end up signed in.
+    // v2.0.13: switch to a full-page redirect for OAuth (normal tab).
+    // v3.2.2:  when running inside an iframe (e.g. Home Assistant dashboard)
+    //          a full-page redirect is blocked by the host frame and Google
+    //          returns a 403 "That's an error" because the redirectTo URL is
+    //          the HA origin, which is not an authorised Supabase redirect URI.
+    //          Fix: detect iframe context and open the OAuth URL in a new tab
+    //          via skipBrowserRedirect:true.  After the user signs in, the new
+    //          tab redirects back to the canonical app URL; supabase-js on that
+    //          tab fires SIGNED_IN and Supabase's BroadcastChannel mechanism
+    //          automatically propagates the session to this iframe so
+    //          onAuthStateChange fires here too without any extra plumbing.
     dom.googleBtn.disabled = true;
     dom.googleBtn.innerHTML = '<span class="auth-spinner"></span>';
     try {
       const client     = await getClient();
-      const redirectTo = window.location.href.split('?')[0].split('#')[0];
-      const { error } = await client.auth.signInWithOAuth({
-        provider: 'google',
-        options:  { redirectTo },
-      });
-      if (error) throw error;
-      // If we reach this line, supabase didn't navigate (very rare).
-      // Restore the button so the user can retry.
-      setTimeout(() => {
-        if (!currentUser) {
-          dom.googleBtn.disabled  = false;
-          dom.googleBtn.innerHTML = GOOGLE_SVG;
-        }
-      }, 4000);
+      // Always use the canonical app origin as redirectTo, not the current
+      // iframe URL (which may be ha.example.com and not in the allowlist).
+      const appOrigin  = 'https://andreafreda.github.io/board/';
+      const redirectTo = appOrigin;
+      const inIframe   = window.self !== window.top;
+
+      if (inIframe) {
+        // Popup/new-tab flow for iframe context.
+        const { data, error } = await client.auth.signInWithOAuth({
+          provider: 'google',
+          options:  { redirectTo, skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (data?.url) window.open(data.url, '_blank');
+        // Restore button immediately — the session arrives via BroadcastChannel.
+        dom.googleBtn.disabled  = false;
+        dom.googleBtn.innerHTML = GOOGLE_SVG;
+      } else {
+        // Normal standalone tab: full-page redirect (original behaviour).
+        const { error } = await client.auth.signInWithOAuth({
+          provider: 'google',
+          options:  { redirectTo },
+        });
+        if (error) throw error;
+        // If we reach this line, supabase didn't navigate (very rare).
+        // Restore the button so the user can retry.
+        setTimeout(() => {
+          if (!currentUser) {
+            dom.googleBtn.disabled  = false;
+            dom.googleBtn.innerHTML = GOOGLE_SVG;
+          }
+        }, 4000);
+      }
     } catch (e) {
       console.warn('OAuth error:', e);
       dom.googleBtn.disabled  = false;
