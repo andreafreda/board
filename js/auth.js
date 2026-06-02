@@ -32,6 +32,17 @@ export const getCurrentUser = () => currentUser;
 // Wire collab.js so it can read the current user without circular imports
 setUserGetter(getCurrentUser);
 
+// ── Cross-context session relay (popup → HA iframe) ──────────────────
+// BroadcastChannel works between same-origin contexts regardless of
+// Chrome's third-party storage partitioning and regardless of whether
+// COOP headers (set by Google/Supabase) nullified window.opener.
+// The popup broadcasts the session after login; any listening iframe
+// picks it up and calls setSession() directly.
+let _lastRelayedToken = null;   // prevent re-broadcast loops
+const _oauthChannel = (() => {
+  try { return new BroadcastChannel('__board_oauth'); } catch { return null; }
+})();
+
 // ── Debounced cloud save (called from state.save() when logged in) ──
 let sbSaveTimer = null;
 async function doSbSave() {
@@ -113,39 +124,23 @@ export async function renderAuth(session) {
   if (isViewMode()) return;
 
   if (session?.user) {
-    // v3.2.8: if we're running inside the OAuth popup opened by the HA iframe,
-    // send the session back via postMessage (bypasses Chrome's third-party
-    // storage partitioning that prevents localStorage sync across contexts),
-    // then close the popup. The iframe listener calls setSession() directly.
-    if (window.opener && !window.opener.closed) {
+    // v3.3.0: broadcast session to any listening same-origin context
+    // (e.g. the HA iframe that opened this popup). BroadcastChannel is
+    // not affected by COOP or Chrome's third-party storage partitioning.
+    if (_oauthChannel && session.access_token !== _lastRelayedToken) {
+      _lastRelayedToken = session.access_token;
       try {
-        window.opener.postMessage({
-          type:         '__board_oauth',
-          accessToken:  session.access_token,
-          refreshToken: session.refresh_token,
-        }, 'https://andreafreda.github.io');
-      } catch (e) { console.warn('[auth] postMessage failed:', e); }
-      // Small delay so postMessage is delivered before the window closes
-      await new Promise(r => setTimeout(r, 200));
-      try { window.close(); } catch {}
-      return;
-    }
-
-    // v3.2.6: fallback — if popup was blocked and top-frame redirect was used,
-    // the user lands on the standalone board. If a ?return= URL was saved to
-    // localStorage by the iframe, redirect back to HA.
-    if (window.self === window.top) {
-      const raw = localStorage.getItem('__board_ha_return');
-      if (raw) {
-        try {
-          const { url, t } = JSON.parse(raw);
-          if (typeof url === 'string' && Date.now() - t < 30 * 60 * 1000) {
-            localStorage.removeItem('__board_ha_return');
-            window.location.href = url;
-            return;
-          }
-        } catch {}
-        localStorage.removeItem('__board_ha_return');
+        _oauthChannel.postMessage({
+          type: '__board_oauth',
+          at:   session.access_token,
+          rt:   session.refresh_token,
+        });
+      } catch {}
+      // If window.opener exists (not nulled by COOP) this is a popup — close it.
+      if (window.opener !== null) {
+        await new Promise(r => setTimeout(r, 250));
+        try { window.close(); } catch {}
+        return;
       }
     }
     await loadCloudBoardsForUser(session);
@@ -252,41 +247,30 @@ function restoreGuestBoardsFromLocalStorage() {
 
 // ── Wire the OAuth popup + sign-out + state hooks ───────────────────
 export function initAuth() {
-  // v3.2.6: if the board is embedded in HA via an iframe URL like
-  //   https://andreafreda.github.io/board/?return=https://ha.example.com
-  // save that return URL to localStorage so that after OAuth (which lands
-  // the user on the standalone board) we can redirect them back to HA.
-  try {
-    const returnParam = new URLSearchParams(window.location.search).get('return');
-    if (returnParam) {
-      const parsed = new URL(returnParam);
-      // Safety: only store URLs that point to a different origin
-      if (parsed.origin !== window.location.origin) {
-        localStorage.setItem('__board_ha_return', JSON.stringify({ url: returnParam, t: Date.now() }));
+  // v3.3.0: listen for session broadcast from the OAuth popup.
+  // BroadcastChannel works across same-origin contexts (iframe ↔ popup)
+  // even after COOP breaks window.opener and even with Chrome's storage
+  // partitioning — it is purely origin-scoped, not storage-scoped.
+  if (_oauthChannel) {
+    _oauthChannel.onmessage = async (e) => {
+      if (e.data?.type !== '__board_oauth') return;
+      if (e.data.at === _lastRelayedToken) return; // prevent echo loop
+      _lastRelayedToken = e.data.at;
+      try {
+        const client = await getClient();
+        // Check we don't already have this session (e.g. standalone board)
+        const { data: { session: cur } } = await client.auth.getSession();
+        if (cur?.access_token === e.data.at) return;
+        const { error } = await client.auth.setSession({
+          access_token:  e.data.at,
+          refresh_token: e.data.rt,
+        });
+        if (error) console.warn('[auth] BroadcastChannel setSession error:', error);
+      } catch (err) {
+        console.warn('[auth] BroadcastChannel session relay failed:', err);
       }
-    }
-  } catch {}
-
-  // v3.2.8: receive the session posted back from the OAuth popup.
-  // Chrome partitions localStorage per (origin × top-level-origin), so the
-  // popup (top-level andreafreda.github.io) and the HA iframe (embedded in
-  // ha.andreafreda.cloud) have separate storage — Supabase's built-in
-  // cross-tab sync never fires across them. postMessage bypasses this.
-  window.addEventListener('message', async (e) => {
-    if (e.origin !== 'https://andreafreda.github.io') return;
-    if (e.data?.type !== '__board_oauth') return;
-    try {
-      const client = await getClient();
-      const { error } = await client.auth.setSession({
-        access_token:  e.data.accessToken,
-        refresh_token: e.data.refreshToken,
-      });
-      if (error) console.warn('[auth] setSession error:', error);
-      // onAuthStateChange fires automatically → renderAuth(session) → board loads
-    } catch (err) {
-      console.warn('[auth] popup session injection failed:', err);
-    }
-  });
+    };
+  }
 
   // Wire state.save() so it can schedule a cloud save when logged in
   setSaveHook({ getCurrentUser, scheduleSbSave });
@@ -315,35 +299,26 @@ export function initAuth() {
   });
 
   dom.googleBtn.addEventListener('click', async () => {
-    // v2.0.13: full-page redirect for standalone tab.
-    // v3.2.9:  iframe flow — popup opened synchronously + postMessage session.
-    //
-    // Google blocks OAuth inside cross-origin iframes (403). Fix:
-    // 1. Open a popup from the iframe's OWN window SYNCHRONOUSLY (before any
-    //    await) so the user-gesture budget is still active and Chrome allows it.
-    // 2. Navigate the popup to the OAuth URL after getting it (async).
-    // 3. After login the popup calls window.opener.postMessage(tokens) back to
-    //    the iframe, then closes. The iframe calls setSession() directly,
-    //    bypassing Chrome's third-party storage partitioning that prevents
-    //    localStorage sync between popup and embedded iframe.
-    // Fallback if popup is blocked: navigate the top frame (HA) and use
-    // ?return= to come back.
+    // v3.3.0 — two paths:
+    // STANDALONE: full-page redirect (original, unchanged).
+    // IFRAME (HA): popup opened synchronously → OAuth → BroadcastChannel
+    //   session relay back to iframe → setSession() → board logs in.
+    //   HA never navigates away.
     dom.googleBtn.disabled = true;
     dom.googleBtn.innerHTML = '<span class="auth-spinner"></span>';
     try {
-      const redirectTo = 'https://andreafreda.github.io/board/';
-      const inIframe   = window.self !== window.top;
+      const inIframe = window.self !== window.top;
 
-      // ── IFRAME PATH ──────────────────────────────────────────────────────
       if (inIframe) {
-        // Step 1 — open popup NOW (synchronous, user gesture still active).
+        // Step 1 — open popup BEFORE any await (user gesture still active)
         let popup = null;
         try {
           popup = window.open('', '_blank', 'popup,width=520,height=620,left=200,top=100');
         } catch {}
 
-        // Step 2 — get OAuth URL (async; gesture budget no longer required).
-        const client = await getClient();
+        // Step 2 — get OAuth URL (async)
+        const client     = await getClient();
+        const redirectTo = 'https://andreafreda.github.io/board/';
         const { data, error } = await client.auth.signInWithOAuth({
           provider: 'google',
           options:  { redirectTo, skipBrowserRedirect: true },
@@ -352,28 +327,29 @@ export function initAuth() {
 
         if (data?.url) {
           if (popup && !popup.closed) {
-            popup.location.href = data.url;           // → Google → board → postMessage → close
+            popup.location.href = data.url;
             dom.googleBtn.disabled  = false;
             dom.googleBtn.innerHTML = GOOGLE_SVG;
-            return;
+          } else {
+            // Popup blocked — navigate top frame as last resort
+            try { window.top.location.href = data.url; }
+            catch { window.location.href  = data.url; }
           }
-          // Popup blocked — fall back to top-frame navigation.
-          try { window.top.location.href = data.url; } catch { window.location.href = data.url; }
-          return;
+        } else {
+          dom.googleBtn.disabled  = false;
+          dom.googleBtn.innerHTML = GOOGLE_SVG;
         }
-        dom.googleBtn.disabled  = false;
-        dom.googleBtn.innerHTML = GOOGLE_SVG;
         return;
       }
 
-      // ── STANDALONE PATH ──────────────────────────────────────────────────
-      const client = await getClient();
-      const { error } = await client.auth.signInWithOAuth({
+      // STANDALONE: restore original full-page redirect
+      const client     = await getClient();
+      const redirectTo = window.location.href.split('?')[0].split('#')[0];
+      const { error }  = await client.auth.signInWithOAuth({
         provider: 'google',
         options:  { redirectTo },
       });
       if (error) throw error;
-      // supabase performs a full-page redirect; if we reach here (rare) restore.
       setTimeout(() => {
         if (!currentUser) {
           dom.googleBtn.disabled  = false;
