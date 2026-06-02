@@ -266,14 +266,20 @@ export function initAuth() {
       const inIframe   = window.self !== window.top;
 
       if (inIframe) {
-        // Popup/new-tab flow for iframe context.
+        // Iframe flow (e.g. Home Assistant): window.open() is silently blocked
+        // by the iframe sandbox so we navigate the iframe itself to the OAuth URL.
+        // Google → redirectTo (andreafreda.github.io/board) → supabase-js stores
+        // session in localStorage → iframe reloads the app already signed in.
         const { data, error } = await client.auth.signInWithOAuth({
           provider: 'google',
           options:  { redirectTo, skipBrowserRedirect: true },
         });
         if (error) throw error;
-        if (data?.url) window.open(data.url, '_blank');
-        // Restore button immediately — the session arrives via BroadcastChannel.
+        if (data?.url) {
+          window.location.href = data.url;
+          return; // navigation in progress — no need to restore button
+        }
+        // fallback: URL not returned, restore button
         dom.googleBtn.disabled  = false;
         dom.googleBtn.innerHTML = GOOGLE_SVG;
       } else {
