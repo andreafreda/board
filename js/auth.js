@@ -315,41 +315,34 @@ export function initAuth() {
   });
 
   dom.googleBtn.addEventListener('click', async () => {
-    // v2.0.13: full-page redirect for standalone tab (original behaviour).
-    // v3.2.7:  iframe flow rewritten.
+    // v2.0.13: full-page redirect for standalone tab.
+    // v3.2.9:  iframe flow — popup opened synchronously + postMessage session.
     //
-    // Problem: Google blocks its OAuth consent page when loaded inside an
-    // iframe (returns 403). Every approach that navigates the iframe itself
-    // to Google fails.
-    //
-    // Solution: open a small popup window from the board iframe's OWN window
-    // object (not window.top) SYNCHRONOUSLY while the user-gesture budget is
-    // still active, then navigate it to the OAuth URL once we have it.
-    // After login the popup lands on the board app, detects window.opener,
-    // and calls window.close().  Supabase's localStorage-based cross-tab
-    // sync fires onAuthStateChange in the HA iframe automatically — HA never
-    // moves.
-    //
-    // Fallback chain if popup is blocked:
-    //   1. window.top.location.href (navigates all of HA — user comes back via ?return=)
-    //   2. window.location.href    (navigates the iframe — Google 403, last resort)
+    // Google blocks OAuth inside cross-origin iframes (403). Fix:
+    // 1. Open a popup from the iframe's OWN window SYNCHRONOUSLY (before any
+    //    await) so the user-gesture budget is still active and Chrome allows it.
+    // 2. Navigate the popup to the OAuth URL after getting it (async).
+    // 3. After login the popup calls window.opener.postMessage(tokens) back to
+    //    the iframe, then closes. The iframe calls setSession() directly,
+    //    bypassing Chrome's third-party storage partitioning that prevents
+    //    localStorage sync between popup and embedded iframe.
+    // Fallback if popup is blocked: navigate the top frame (HA) and use
+    // ?return= to come back.
     dom.googleBtn.disabled = true;
     dom.googleBtn.innerHTML = '<span class="auth-spinner"></span>';
     try {
-      const appOrigin  = 'https://andreafreda.github.io/board/';
-      const redirectTo = appOrigin;
+      const redirectTo = 'https://andreafreda.github.io/board/';
       const inIframe   = window.self !== window.top;
 
+      // ── IFRAME PATH ──────────────────────────────────────────────────────
       if (inIframe) {
-        // ── Step 1: open popup SYNCHRONOUSLY (user gesture still active) ──
-        // Use window.open() on the iframe's own window — the iframe has no
-        // sandbox so this is allowed; the gesture budget is intact because we
-        // haven't awaited anything yet.
-        const POPUP_FEATURES = 'popup,width=520,height=620,left=200,top=100';
+        // Step 1 — open popup NOW (synchronous, user gesture still active).
         let popup = null;
-        try { popup = window.open('', '_blank', POPUP_FEATURES); } catch {}
+        try {
+          popup = window.open('', '_blank', 'popup,width=520,height=620,left=200,top=100');
+        } catch {}
 
-        // ── Step 2: get the OAuth URL (async, gesture budget no longer matters) ──
+        // Step 2 — get OAuth URL (async; gesture budget no longer required).
         const client = await getClient();
         const { data, error } = await client.auth.signInWithOAuth({
           provider: 'google',
@@ -359,41 +352,34 @@ export function initAuth() {
 
         if (data?.url) {
           if (popup && !popup.closed) {
-            // Happy path: popup is open, send it to Google OAuth.
-            popup.location.href = data.url;
-            // Restore button — login completes in the popup, not here.
+            popup.location.href = data.url;           // → Google → board → postMessage → close
             dom.googleBtn.disabled  = false;
             dom.googleBtn.innerHTML = GOOGLE_SVG;
             return;
           }
-          // Popup was blocked — fall back to navigating the top frame.
-          // If the card URL includes ?return=<ha-url> the board will
-          // redirect the user back to HA after login.
-          try {
-            window.top.location.href = data.url;
-          } catch {
-            window.location.href = data.url;
-          }
+          // Popup blocked — fall back to top-frame navigation.
+          try { window.top.location.href = data.url; } catch { window.location.href = data.url; }
           return;
         }
         dom.googleBtn.disabled  = false;
         dom.googleBtn.innerHTML = GOOGLE_SVG;
-      } else {
-        // Normal standalone tab: full-page redirect (original behaviour).
-        const { error } = await client.auth.signInWithOAuth({
-          provider: 'google',
-          options:  { redirectTo },
-        });
-        if (error) throw error;
-        // If we reach this line, supabase didn't navigate (very rare).
-        // Restore the button so the user can retry.
-        setTimeout(() => {
-          if (!currentUser) {
-            dom.googleBtn.disabled  = false;
-            dom.googleBtn.innerHTML = GOOGLE_SVG;
-          }
-        }, 4000);
+        return;
       }
+
+      // ── STANDALONE PATH ──────────────────────────────────────────────────
+      const client = await getClient();
+      const { error } = await client.auth.signInWithOAuth({
+        provider: 'google',
+        options:  { redirectTo },
+      });
+      if (error) throw error;
+      // supabase performs a full-page redirect; if we reach here (rare) restore.
+      setTimeout(() => {
+        if (!currentUser) {
+          dom.googleBtn.disabled  = false;
+          dom.googleBtn.innerHTML = GOOGLE_SVG;
+        }
+      }, 4000);
     } catch (e) {
       console.warn('OAuth error:', e);
       dom.googleBtn.disabled  = false;
